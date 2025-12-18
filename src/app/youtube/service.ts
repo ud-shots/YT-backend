@@ -126,11 +126,53 @@ class YoutubeService {
       }
 
       // Create video record in database
-      let obj:any = {
+      let obj: any = {
         user_id: userId,
         filename: file ? file.originalname : url,
         original_url: url || null,
         local_path: file ? file.path : null,
+        visibility: visibility || 'private',
+        status: 'uploading',
+        scheduled_at: schedule ? new Date(schedule) : undefined
+      }
+      const videoRecord = await Videos.create(obj);
+
+      // Start the upload process
+      if (url) {
+        //@ts-ignore
+        autoUploadVideo('url', req?.body, null, userId || '', videoRecord.id?.toString())
+      } else {
+        //@ts-ignore
+        autoUploadVideo('file', req?.body, file, userId || '', videoRecord.id?.toString())
+      }
+
+      return Handler.Success(RES_STATUS.E1, STATUS_CODE.EC200, "Video In Progress!", { videoId: videoRecord.id })
+
+    } catch (error: any) {
+      console.log('Error :- ', error)
+      return Handler.Error(RES_STATUS.E2, STATUS_CODE.EC500, RES_MESSAGE.EM500)
+    }
+  }
+
+  async uploadVideoApp(req: any) {
+    try {
+
+      const { url, visibility, schedule } = req.body;
+
+      const user = await Users.findOne({ where: { email: 'shots.ud@gmail.com' }, raw: true });
+      let userId = user?.id;
+
+
+      if (!url) {
+        return Handler.Error(RES_STATUS.E2, STATUS_CODE.EC422, 'file or url any one require')
+      }
+
+      // Create video record in database
+      let obj: any = {
+        user_id: userId,
+        filename: url,
+        original_url: url || null,
+        local_path: null,
         visibility: visibility || 'private',
         status: 'uploading',
         scheduled_at: schedule ? new Date(schedule) : undefined

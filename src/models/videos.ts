@@ -56,7 +56,7 @@ export class Videos extends Model {
   @Column({ type: DataType.STRING, allowNull: true })
   published_at?: string;
 
-  @Column({ type: DataType.STRING, allowNull: true })
+  @Column({ type: DataType.TEXT, allowNull: true })
   rejection_reason?: string;
 
   @Column({ type: DataType.STRING, allowNull: true })

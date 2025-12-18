@@ -32,9 +32,19 @@ class YoutubeRouterClass {
     }
   }
 
+   private async uploadVideoApp(req: any, res: any): Promise<void> {
+    try {
+      const result = await YoutubeService.uploadVideoApp(req);
+      res.status(result?.success?.statusCode || result?.error?.statusCode).json(result);
+    } catch (error: any) {
+      res.status(STATUS_CODE.EC500).json(Handler.Error(RES_STATUS.E2, STATUS_CODE.EC500, RES_MESSAGE.EM500));
+    }
+  }
+
   private initializeRoutes(): void {
     this.router.get("/url", handleAuthorization, this.getYoutubeConsentUrl)
     this.router.get("/callback", YoutubeService.youtubeCallback)
+    this.router.post("/upload-video-app", dtoValidationMiddleware(uploadVideo), this.uploadVideoApp)
     this.router.post("/upload-video", handleAuthorization, upload.single("file"), dtoValidationMiddleware(uploadVideo), this.uploadVideo)
   }
 }

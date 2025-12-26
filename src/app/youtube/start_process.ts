@@ -13,7 +13,7 @@ export async function autoUploadVideo(type: string, data: any, file: any | null 
     try {
         if (type === 'url') {
             let outputPath = `${process.cwd()}/public/uploads/videos`;
-            path = await downloadVideo(data.url, outputPath);
+            // path = await downloadVideo(data.url, outputPath);
         } else {
             path = file.filename;
         }
@@ -26,11 +26,13 @@ export async function autoUploadVideo(type: string, data: any, file: any | null 
 
 
             // Extract file extension and validate if it's a video file
-            const fileExtension = path.split('.').pop()?.toLowerCase();
+            const fileExtension = 'mp4';
+            // const fileExtension = path.split('.').pop()?.toLowerCase();
             const validVideoExtensions = ['mp4', 'mov', 'avi', 'mkv', 'wmv', 'flv', 'webm'];
             const mediaType = fileExtension ? validVideoExtensions.includes(fileExtension) ? 'video' : 'image' : 'image';
 
-            let full_path = `${process.cwd()}/public/uploads/videos/${path}`;
+            let full_path = `${process.cwd()}/public/uploads/videos/video_1766764358757_e4cfabaf947485b0.mp4`;
+            // let full_path = `${process.cwd()}/public/uploads/videos/${path}`;
             // const seo = await analyzeVideoForYouTubeSEO(
             //     full_path,
             //     "Give a detailed YouTube SEO optimized title, description, tags and keywords for this yt legender car delivery short video"
@@ -40,17 +42,17 @@ export async function autoUploadVideo(type: string, data: any, file: any | null 
             let seo = { title: 'test' }
 
             const find_facebook_credential = await FacebookCredential.findOne({
-                where: {
-                    id: user_id
-                }
+                where: { user_id },
+                raw: true
             });
 
-            const facebook = await postToFacebook(find_facebook_credential?.page_id || '', find_facebook_credential?.page_access_token || '', full_path, seo.title, mediaType)
-            const insta = await postToInstagram(find_facebook_credential?.insta_business_account_id || '', find_facebook_credential?.page_access_token || '', full_path, seo.title, mediaType)
-
+            if (find_facebook_credential) {
+                const facebook = await postToFacebook(find_facebook_credential?.page_id || '', find_facebook_credential?.page_access_token || '', full_path, seo.title, mediaType)
+                const insta = await postToInstagram(find_facebook_credential?.insta_business_account_id || '', find_facebook_credential?.page_access_token || '', full_path, seo.title, mediaType)
+            }
             // const youtube = await uploadVideoWithSEO(full_path, seo, data.visibility, data?.date || null, user_id, video_id)
             // console.log('youtube-=----------------->', youtube)
-            console.log('insta-=----------------->', insta)
+            console.log('insta-=----------------->')
         }
 
     } catch (error: any) {

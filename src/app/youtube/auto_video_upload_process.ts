@@ -9,6 +9,7 @@ import moment from 'moment'
 ================================ */
 
 import { Videos } from "../../models/videos";
+import { YouTubeCredential } from "../../models/youtube_credential";
 
 export async function uploadVideoWithSEO(
   filePath: string,
@@ -19,13 +20,19 @@ export async function uploadVideoWithSEO(
   video_id: string
 ) {
   // 1️⃣ Fetch user
-  const user = await Users.findByPk(user_id);
+  const user = await Users.findByPk(user_id, { raw: true });
+
+  const youtube_credential = await YouTubeCredential.findOne({ where: { user_id } });
 
   if (!user) {
     throw new Error("User not found");
   }
 
-  if (!user.access_token || !user.refresh_token) {
+  if (!youtube_credential) {
+    throw new Error("YouTube credential not found");
+  }
+
+  if (!youtube_credential.access_token || !youtube_credential.refresh_token) {
     throw new Error("YouTube not connected for this user");
   }
 
@@ -37,19 +44,25 @@ export async function uploadVideoWithSEO(
   );
 
   oauth2Client.setCredentials({
-    access_token: user.access_token,
-    refresh_token: user.refresh_token,
-    expiry_date: user.yt_token_expiry?.getTime(),
+    access_token: youtube_credential.access_token,
+    refresh_token: youtube_credential.refresh_token,
+    expiry_date: youtube_credential.token_expiry ? new Date(youtube_credential.token_expiry).getTime() : null,
   });
 
   // 3️⃣ Auto-save refreshed tokens
   oauth2Client.on("tokens", async (tokens) => {
+    let expiry: Date | null = null;
     if (tokens.access_token) {
-      user.access_token = tokens.access_token;
+      youtube_credential.access_token = tokens.access_token;
       if (tokens.expiry_date) {
-        user.yt_token_expiry = new Date(tokens.expiry_date);
+        if (typeof tokens.expiry_date === "number") {
+          expiry = new Date(tokens.expiry_date);
+        }
       }
+      
       await user.save();
+      //@ts-ignore
+      await YouTubeCredential.update({ access_token: tokens.access_token, token_expiry: expiry ? expiry.toISOString() : null }, { where: { user_id } });
     }
   });
 
@@ -137,8 +150,8 @@ ${seo.suggestedHashtags?.join(" ")}
   // Update video record with final status
   const finalStatus = publishType === "scheduled" ? "scheduled" : "published";
   const publishedAt = finalStatus === "published" ? moment().format('YYYY-MM-DD HH:mm:ss') : null;
-  
-  let obj:any = {
+
+  let obj: any = {
     status: finalStatus,
     progress: 100,
     published_at: publishedAt,
@@ -177,7 +190,7 @@ async function validateVideo(youtube: any, videoId: string, video_id: string) {
     ) {
       console.log("❌ Video blocked or rejected, deleting...");
       await youtube.videos.delete({ id: videoId });
-      
+
       // Update video status to 'blocked' in our database
       await Videos.update({
         status: 'blocked',
@@ -187,12 +200,12 @@ async function validateVideo(youtube: any, videoId: string, video_id: string) {
           id: video_id
         }
       });
-      
+
       throw new Error("Video rejected or blocked");
     }
 
     console.log("🎉 Video is valid and safe!");
-  } catch (error:any) {
+  } catch (error: any) {
     console.error("Error validating video:", error);
     // Update video status to 'blocked' if there was an error
     await Videos.update({

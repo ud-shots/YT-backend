@@ -1,11 +1,13 @@
 import dotenv from "dotenv"
 dotenv.config();
 import { RES_MESSAGE, RES_STATUS, STATUS_CODE } from "../../common/statusMessageCode";
-import bcrypt from 'bcrypt'
 import { Users } from "../../models/users";
+import { YouTubeCredential } from "../../models/youtube_credential";
+import { FacebookCredential } from "../../models/facebook_credential";
 import Handler from "../../common/handler";
 import { Login_History } from "../../models/login_history";
 import { OAuth2Client } from 'google-auth-library';
+import { CommonUtils } from "../../common/utils";
 // Your Google Client ID
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const client = new OAuth2Client(CLIENT_ID);
@@ -13,93 +15,105 @@ import axios from 'axios'
 
 class AuthService {
 
-  async generateRandomString(length: number = 10) {
-    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-    let result = "";
-    for (let i = 0; i < length; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return result;
-  };
-
   async loginService(req: any) {
     try {
 
-      const { email, password } = req.body
+      const { email, password } = req.body;
 
-      const exitUser: any = await Users.findOne({ where: { email, is_active: true } })
+      // Find user with basic information only
+      const user: any = await Users.findOne({ 
+        where: { email, is_active: true },
+        attributes: ['id', 'email', 'password', 'is_email_verified', 'username'] // Only fetch necessary fields
+      });
 
-      if (!exitUser) {
-        return Handler.Error(RES_STATUS.E2, STATUS_CODE.EC404, "An Account With This Email Does Not Exist!")
+      if (!user) {
+        return Handler.Error(RES_STATUS.E2, STATUS_CODE.EC404, "An Account With This Email Does Not Exist!");
       }
 
-      if (!exitUser.is_email_verified) {
-        return Handler.Error(RES_STATUS.E2, STATUS_CODE.EC401, "Email Not Verified Please Verify To Login!")
+      if (!user.is_email_verified) {
+        return Handler.Error(RES_STATUS.E2, STATUS_CODE.EC401, "Email Not Verified Please Verify To Login!");
       }
 
-      // if (!exitUser?.dataValues?.password) {
-      //   return Handler.Error(RES_STATUS.E2, STATUS_CODE.EC400, "Please Forgot Your Password!")
-      // }
-
-      // let dPass = await bcrypt.compare(password, exitUser?.dataValues?.password)
+      // Check if user has a password set
+      if (!user.password) {
+        return Handler.Error(RES_STATUS.E2, STATUS_CODE.EC401, "Account not properly set up. Please reset your password!");
+      }
       
-      let dPass = (password === 'HELLO_UD@123')
-
-      if (!dPass) {
-        return Handler.Error(RES_STATUS.E2, STATUS_CODE.EC401, "The Password You Entered Is Incorrect!")
+      // Compare password using bcrypt
+      const isPasswordValid = await CommonUtils.comparePassword(password, user.password);
+      
+      if (!isPasswordValid) {
+        return Handler.Error(RES_STATUS.E2, STATUS_CODE.EC401, "The Password You Entered Is Incorrect!");
       }
 
-      // if (exitUser.dataValues.login_token != null) {
-      //   const decode = await Handler.verifyToken(exitUser.dataValues.login_token)
+      // Generate verification random string
+      const vr = CommonUtils.generateRandomString();
+      
+      // Generate JWT token
+      const token = await Handler.generateToken({ 
+        id: user.id, 
+        email: user.email, 
+        username: user.username, 
+        vr 
+      }, '5d');
 
-      //   if (decode) {
-      //     return Handler.Error(RES_STATUS.E2, STATUS_CODE.EC409, "Oops! You’re Already Logged In On Another Device!")
-      //   }
-      // }
+      // Update user with login token and vr
+      await Users.update({ login_token: token, vr }, { where: { id: user.id } });
 
-      let vr = await this.generateRandomString()
-      const token = await Handler.generateToken({ ...exitUser.dataValues, vr }, '24h')
+      // Create login history record
+      await Login_History.create({ 
+        user_id: user.id, 
+        email: user.email, 
+        login_token: token, 
+        vr: vr
+      } as any);
 
-      await Users.update({ login_token: token, vr }, { where: { id: exitUser.dataValues.id } })
-
-      let history_data: any = { user_id: exitUser.dataValues.id, email: exitUser.dataValues.email, login_token: token, vr }
-      await Login_History.create(history_data)
-
-      return Handler.Success(RES_STATUS.E1, STATUS_CODE.EC200, "Login Successfully!", { jwt: token, vr, user: { id: exitUser.dataValues.id, email: exitUser.dataValues.email } })
+      return Handler.Success(RES_STATUS.E1, STATUS_CODE.EC200, "Login Successfully!", { 
+        jwt: token, 
+        vr, 
+        user: { 
+          id: user.id, 
+          email: user.email,
+          username: user.username 
+        } 
+      });
 
     } catch (error: any) {
-      console.log('Error From Login:- ', error)
-      return Handler.Error(RES_STATUS.E2, STATUS_CODE.EC500, RES_MESSAGE.EM500)
+      console.error('Error From Login:- ', error);
+      return Handler.Error(RES_STATUS.E2, STATUS_CODE.EC500, RES_MESSAGE.EM500);
     }
   }
 
   async logoutService(req: any) {
     try {
+      const token: any = req.header('Authorization')?.replace('Bearer ', '');
+      const { userId } = req;
 
-      const token: any = await req.header('Authorization')?.replace('Bearer ', '');
-      console.log("🚀 ~ AuthService ~ logoutService ~ token:", token)
-      const { userId } = req
+      const user = await Users.findOne({ where: { id: userId } });
 
-      const exitUser: any = await Users.findOne({ where: { id: userId } })
-
-      if (!exitUser) {
-        return Handler.Error(RES_STATUS.E2, STATUS_CODE.EC404, "An Account With This Email Does Not Exist!")
+      if (!user) {
+        return Handler.Error(RES_STATUS.E2, STATUS_CODE.EC404, "An Account With This Email Does Not Exist!");
       }
 
-      let history_data: any = { user_id: exitUser.dataValues.id, email: exitUser.dataValues.email, login_token: token, type: 'Logout', ip: req.user_ip }
-      await Login_History.create(history_data)
+      // Create logout history record
+      await Login_History.create({ 
+        user_id: user.id, 
+        email: user.email, 
+        login_token: token, 
+        vr: user.vr || undefined
+      } as any);
 
-      if (!exitUser.login_token) {
-        return Handler.Success(RES_STATUS.E1, STATUS_CODE.EC200, "You Have Already Logged Out!", null)
+      if (!user.login_token) {
+        return Handler.Success(RES_STATUS.E1, STATUS_CODE.EC200, "You Have Already Logged Out!", null);
       }
 
-      await exitUser.update({ login_token: null, vr: null })
+      await user.update({ login_token: null as any, vr: null as any });
 
-      return Handler.Success(RES_STATUS.E1, STATUS_CODE.EC200, "Logout Successfully!", null)
+      return Handler.Success(RES_STATUS.E1, STATUS_CODE.EC200, "Logout Successfully!", null);
 
     } catch (error: any) {
-      console.log('Error From Logout:- ', error)
-      return Handler.Error(RES_STATUS.E2, STATUS_CODE.EC500, RES_MESSAGE.EM500)
+      console.error('Error From Logout:- ', error);
+      return Handler.Error(RES_STATUS.E2, STATUS_CODE.EC500, RES_MESSAGE.EM500);
     }
   }
 
@@ -113,7 +127,7 @@ class AuthService {
       const tokenInfo = tokenInfoRes.data;
 
       if (tokenInfo.aud !== CLIENT_ID) {
-        return { status: false, message: "Invalid Client Id!" }
+        return { status: false, message: "Invalid Client Id!" };
       }
 
       // Step 2: Get user info
@@ -124,81 +138,139 @@ class AuthService {
       });
 
       const user = userInfoRes.data;
-      return { status: true, message: "Data Fetch Successfully!", data: { email: user.email, name: user.name, picture: user.picture, sub: user.id } };
+      return { 
+        status: true, 
+        message: "Data Fetch Successfully!", 
+        data: { 
+          email: user.email, 
+          name: user.name, 
+          picture: user.picture, 
+          sub: user.id 
+        } 
+      };
 
     } catch (error: any) {
       console.error('Google token validation failed:', error.message);
-      return { status: false, message: "Invalid Or Expired Google Access Token!" }
+      return { status: false, message: "Invalid Or Expired Google Access Token!" };
     }
   };
 
   async ssoLoginService(req: any) {
     try {
-      let { token } = req.body
-      // Verify the token using Google's OAuth2 client
-      // const ticket = await client.verifyIdToken({
-      //   idToken: token,
-      //   audience: CLIENT_ID,
-      // });
-
-      // Get user details from the token
-      // const payload = ticket.getPayload();
-
-      const { data, status, message } = await this.validateGoogleToken(token)
+      const { token } = req.body;
+      
+      const { data, status, message } = await this.validateGoogleToken(token);
 
       if (!status) {
-        return Handler.Error(RES_STATUS.E2, STATUS_CODE.EC400, message)
+        return Handler.Error(RES_STATUS.E2, STATUS_CODE.EC400, message);
       }
 
       if (data) {
         const { email, name } = data as { email: string, name: string };
 
-        let user: any = await Users.findOne({ where: { email } })
+        let user = await Users.findOne({ where: { email } });
 
         if (!user) {
-
-          let obj: any = {
+          // Hash a default password for SSO users
+          const defaultPassword = await CommonUtils.hashPassword(CommonUtils.generateRandomString(12));
+          
+          const newUser = await Users.create({
             username: name,
             email,
+            password: defaultPassword,
             is_email_verified: true
-          }
-          let createUser = await Users.create(obj)
+          } as any);
+          
+          user = newUser;
         }
 
-        const exitUser = await Users.findOne({ where: { email } })
-
-        if (!exitUser) {
-          return Handler.Error(RES_STATUS.E2, STATUS_CODE.EC403, "An Account With This Email Does Not Exist!")
+        if (!user) {
+          return Handler.Error(RES_STATUS.E2, STATUS_CODE.EC403, "An Account With This Email Does Not Exist!");
         }
 
-        if (!exitUser.is_email_verified) {
-          await Users.update({ is_email_verified: true }, { where: { id: exitUser?.dataValues.id } })
+        if (!user.is_email_verified) {
+          await Users.update({ is_email_verified: true }, { where: { id: user.id } });
         }
 
-        // if (exitUser.dataValues.login_token != null) {
-        //   const decode = await Handler.verifyToken(exitUser.dataValues.login_token)
+        const vr = CommonUtils.generateRandomString();
+        const jwtToken = await Handler.generateToken({ 
+          id: user.id, 
+          email: user.email, 
+          username: user.username, 
+          vr 
+        }, '24h');
 
-        //   if (decode) {
-        //     return Handler.Error(RES_STATUS.E2, STATUS_CODE.EC409, "Oops! You’re Already Logged In On Another Device!")
-        //   }
-        // }
+        await Users.update({ login_token: jwtToken, vr }, { where: { id: user.id } });
 
-        let vr = await this.generateRandomString()
-        const token = await Handler.generateToken({ ...exitUser.dataValues, vr }, '24h')
+        const history_data = { 
+          user_id: user.id, 
+          email: user.email, 
+          login_token: jwtToken, 
+          vr 
+        };
+        await Login_History.create({ 
+          user_id: user.id,
+          email: user.email, 
+          login_token: jwtToken, 
+          vr: vr
+        } as any);
 
-        await Users.update({ login_token: token, vr }, { where: { id: exitUser.dataValues.id } })
-
-        let history_data: any = { user_id: exitUser.dataValues.id, email: exitUser.dataValues.email, login_token: token, vr }
-        await Login_History.create(history_data)
-
-        return Handler.Success(RES_STATUS.E1, STATUS_CODE.EC200, "Login Successfully!", { jwt: token, vr, user: { id: exitUser.dataValues.id } })
-
+        return Handler.Success(RES_STATUS.E1, STATUS_CODE.EC200, "Login Successfully!", { 
+          jwt: jwtToken, 
+          vr, 
+          user: { 
+            id: user.id,
+            email: user.email,
+            username: user.username
+          } 
+        });
       } else {
-        return Handler.Error(RES_STATUS.E2, STATUS_CODE.EC400, "Invalid Token!")
+        return Handler.Error(RES_STATUS.E2, STATUS_CODE.EC400, "Invalid Token!");
       }
     } catch (error: any) {
-      console.log('Error From SSO-Login:- ', error)
-      return Handler.Error(RES_STATUS.E2, STATUS_CODE.EC500, RES_MESSAGE.EM500)
+      console.error('Error From SSO-Login:- ', error);
+      return Handler.Error(RES_STATUS.E2, STATUS_CODE.EC500, RES_MESSAGE.EM500);
+    }
+  }
+
+  async signupService(req: any) {
+    try {
+      const { email, username, password } = req.body;
+
+      // Check if user already exists
+      const existingUser = await Users.findOne({ where: { email } });
+      if (existingUser) {
+        return Handler.Error(RES_STATUS.E2, STATUS_CODE.EC409, "A user with this email already exists!");
+      }
+
+      // Validate password strength
+      const passwordValidation = CommonUtils.validatePassword(password);
+      if (!passwordValidation.status) {
+        return Handler.Error(RES_STATUS.E2, STATUS_CODE.EC400, passwordValidation.message);
+      }
+
+      // Hash the password
+      const hashedPassword = await CommonUtils.hashPassword(password);
+
+      // Create new user
+      const newUser = await Users.create({
+        username,
+        email,
+        password: hashedPassword,
+        is_email_verified: false // User needs to verify email
+      } as any);
+
+      return Handler.Success(RES_STATUS.E1, STATUS_CODE.EC201, "Account created successfully! Please verify your email.", {
+        user: {
+          id: newUser.id,
+          email: newUser.email,
+          username: newUser.username
+        }
+      });
+
+    } catch (error: any) {
+      console.error('Error From Signup:- ', error);
+      return Handler.Error(RES_STATUS.E2, STATUS_CODE.EC500, RES_MESSAGE.EM500);
     }
   }
 

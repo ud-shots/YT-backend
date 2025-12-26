@@ -4,6 +4,7 @@ import { RES_MESSAGE, RES_STATUS, STATUS_CODE } from "../../common/statusMessage
 import Handler from "../../common/handler";
 import { google } from "googleapis";
 import { Users } from "../../models/users";
+import { YouTubeCredential } from "../../models/youtube_credential";
 import { Videos } from "../../models/videos";
 import { downloadVideo } from './download_video';
 import { autoUploadVideo } from "./start_process";
@@ -40,8 +41,8 @@ class YoutubeService {
       return Handler.Success(RES_STATUS.E1, STATUS_CODE.EC200, "Link Created Successfully!", { url })
 
     } catch (error: any) {
-      console.log('Error From Logout:- ', error)
-      return Handler.Error(RES_STATUS.E2, STATUS_CODE.EC500, RES_MESSAGE.EM500)
+      console.error('Error From getYoutubeConsentUrl:- ', error);
+      return Handler.Error(RES_STATUS.E2, STATUS_CODE.EC500, RES_MESSAGE.EM500);
     }
   }
 
@@ -69,49 +70,46 @@ class YoutubeService {
         mine: true,
       });
 
+      console.log(tokens, 'hello token---------->')
       const channel = channelRes.data.items?.[0];
 
-      const obj: any = {
-        user_id: userId, // from your SSO
+      // Create or update YouTube credential record
+      await YouTubeCredential.upsert({
+        user_id: userId,
         channel_id: channel?.id,
         channel_title: channel?.snippet?.title,
         access_token: tokens.access_token,
         refresh_token: tokens.refresh_token,
         token_expiry: tokens.expiry_date
-          ? new Date(tokens.expiry_date)
+          ? String(new Date(tokens.expiry_date))
           : null,
         is_active: true,
-      }
+      } as any);
 
       console.log(tokens, 'hello token---------->')
-      console.log(obj, 'hello obj---------->')
-      //@ts-ignore
-      await Users.update({ channel_id: channel?.id, channel_title: channel?.snippet?.title, access_token: tokens.access_token, refresh_token: tokens.refresh_token, yt_token_expiry: tokens.expiry_date ? new Date(tokens?.expiry_date) : null, is_active: true }, { where: { id: userId } });
-
-
-
-      // await YoutubeAccount.upsert({
-      //   user_id: req.user.id, // from your SSO
-      //   channel_id: channel?.id,
-      //   channel_title: channel?.snippet?.title,
-      //   access_token: tokens.access_token,
-      //   refresh_token: tokens.refresh_token,
-      //   token_expiry: tokens.expiry_date
-      //     ? new Date(tokens.expiry_date)
-      //     : null,
-      //   is_active: true,
-      // });
+      console.log({
+        user_id: userId,
+        channel_id: channel?.id,
+        channel_title: channel?.snippet?.title,
+        access_token: tokens.access_token,
+        refresh_token: tokens.refresh_token,
+        token_expiry: tokens.expiry_date ? String(new Date(tokens.expiry_date)) : null,
+        is_active: true,
+      }, 'YouTube credential saved---------->')
 
       // Close popup safely
       res.send(`
          <script>
           window.close();
         </script>
-        `)
+        `);
 
     } catch (error: any) {
-      console.log('Error From Logout:- ', error)
-      res.send(`Error`)
+      console.error('Error From youtubeCallback:- ', error);
+      res.send(`<script>
+        alert('Error connecting to YouTube: ${error.message}');
+        window.close();
+        </script>`);
     }
   }
 
@@ -122,7 +120,13 @@ class YoutubeService {
       const { file, userId } = req;
 
       if (!file && !url) {
-        return Handler.Error(RES_STATUS.E2, STATUS_CODE.EC422, 'file or url any one require')
+        return Handler.Error(RES_STATUS.E2, STATUS_CODE.EC422, 'file or url any one require');
+      }
+
+      // Verify user has YouTube credentials
+      const youtubeCredential = await YouTubeCredential.findOne({ where: { user_id: userId } });
+      if (!youtubeCredential || !youtubeCredential.is_active) {
+        return Handler.Error(RES_STATUS.E2, STATUS_CODE.EC400, 'YouTube account not connected or not active');
       }
 
       // Create video record in database
@@ -134,23 +138,21 @@ class YoutubeService {
         visibility: visibility || 'private',
         status: 'uploading',
         scheduled_at: schedule ? new Date(schedule) : undefined
-      }
+      };
       const videoRecord = await Videos.create(obj);
 
       // Start the upload process
       if (url) {
-        //@ts-ignore
-        autoUploadVideo('url', req?.body, null, userId || '', videoRecord.id?.toString())
+        autoUploadVideo('url', req?.body, null, userId || '', videoRecord.id?.toString() || '');
       } else {
-        //@ts-ignore
-        autoUploadVideo('file', req?.body, file, userId || '', videoRecord.id?.toString())
+        autoUploadVideo('file', req?.body, file, userId || '', videoRecord.id?.toString() || '');
       }
 
-      return Handler.Success(RES_STATUS.E1, STATUS_CODE.EC200, "Video In Progress!", { videoId: videoRecord.id })
+      return Handler.Success(RES_STATUS.E1, STATUS_CODE.EC200, "Video In Progress!", { videoId: videoRecord.id });
 
     } catch (error: any) {
-      console.log('Error :- ', error)
-      return Handler.Error(RES_STATUS.E2, STATUS_CODE.EC500, RES_MESSAGE.EM500)
+      console.error('Error in uploadVideo:- ', error);
+      return Handler.Error(RES_STATUS.E2, STATUS_CODE.EC500, RES_MESSAGE.EM500);
     }
   }
 
@@ -159,12 +161,22 @@ class YoutubeService {
 
       const { url, visibility, schedule } = req.body;
 
-      const user = await Users.findOne({ where: { email: 'shots.ud@gmail.com' }, raw: true });
-      let userId = user?.id;
+      // Find a user for the app (this should be improved in a real app)
+      const user = await Users.findOne({ where: { email: 'shots.ud@gmail.com' }, attributes: ['id'] });
+      const userId = user?.id;
 
+      if (!userId) {
+        return Handler.Error(RES_STATUS.E2, STATUS_CODE.EC404, 'Default user not found');
+      }
 
       if (!url) {
-        return Handler.Error(RES_STATUS.E2, STATUS_CODE.EC422, 'file or url any one require')
+        return Handler.Error(RES_STATUS.E2, STATUS_CODE.EC422, 'URL is required');
+      }
+
+      // Verify user has YouTube credentials
+      const youtubeCredential = await YouTubeCredential.findOne({ where: { user_id: userId } });
+      if (!youtubeCredential || !youtubeCredential.is_active) {
+        return Handler.Error(RES_STATUS.E2, STATUS_CODE.EC400, 'YouTube account not connected or not active');
       }
 
       // Create video record in database
@@ -176,23 +188,21 @@ class YoutubeService {
         visibility: visibility || 'private',
         status: 'uploading',
         scheduled_at: schedule ? new Date(schedule) : undefined
-      }
+      };
       const videoRecord = await Videos.create(obj);
 
       // Start the upload process
       if (url) {
-        //@ts-ignore
-        autoUploadVideo('url', req?.body, null, userId || '', videoRecord.id?.toString())
+        autoUploadVideo('url', req?.body, null, userId || '', videoRecord.id?.toString() || '');
       } else {
-        //@ts-ignore
-        autoUploadVideo('file', req?.body, file, userId || '', videoRecord.id?.toString())
+        autoUploadVideo('file', req?.body, undefined, userId || '', videoRecord.id?.toString() || '');
       }
 
-      return Handler.Success(RES_STATUS.E1, STATUS_CODE.EC200, "Video In Progress!", { videoId: videoRecord.id })
+      return Handler.Success(RES_STATUS.E1, STATUS_CODE.EC200, "Video In Progress!", { videoId: videoRecord.id });
 
     } catch (error: any) {
-      console.log('Error :- ', error)
-      return Handler.Error(RES_STATUS.E2, STATUS_CODE.EC500, RES_MESSAGE.EM500)
+      console.error('Error in uploadVideoApp:- ', error);
+      return Handler.Error(RES_STATUS.E2, STATUS_CODE.EC500, RES_MESSAGE.EM500);
     }
   }
 

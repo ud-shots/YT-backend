@@ -40,8 +40,18 @@ class AuthRouterClass {
     }
   }
 
+  private async signup(req: any, res: any): Promise<void> {
+    try {
+      const result = await AuthService.signupService(req);
+      res.status(result?.success?.statusCode || result?.error?.statusCode).json(result);
+    } catch (error: any) {
+      res.status(STATUS_CODE.EC500).json(Handler.Error(RES_STATUS.E2, STATUS_CODE.EC500, RES_MESSAGE.EM500));
+    }
+  }
+
   private initializeRoutes(): void {
     this.router.post("/sign-in", dtoValidationMiddleware(login), this.login)
+    this.router.post("/sign-up", dtoValidationMiddleware(signUp), this.signup)
     this.router.get("/logout", handleAuthorization, this.logout)
 
     //sso

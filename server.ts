@@ -7,6 +7,7 @@ dotenv.config()
 import authRoute from './src/app/auth/router'
 import youtubeRoute from './src/app/youtube/router'
 import dashboardRoute from './src/app/dashboard/router'
+import facebookRoute from './src/app/facebook/router'
 import bodyParser from 'body-parser'
 
 const app = express()
@@ -33,22 +34,23 @@ db.sync({
 });
 
 // Create an interval to run every 8 seconds and call the external API
-setInterval(async () => {
-    try {
-        const response = await fetch('https://yt-backend-rvma.onrender.com/');
-        if (!response.ok) {
-            throw new Error(`API request failed with status ${response.status}`);
-        }
-        const data = await response.text();
-        console.log('External API Response:', data);
-    } catch (error) {
-        console.error('Error calling external API:', error);
-    }
-}, 8000);
+// setInterval(async () => {
+//   try {
+//     const response = await fetch('https://yt-backend-rvma.onrender.com/');
+//     if (!response.ok) {
+//       throw new Error(`API request failed with status ${response.status}`);
+//     }
+//     const data = await response.text();
+//     console.log('External API Response:', data);
+//   } catch (error) {
+//     console.error('Error calling external API:', error);
+//   }
+// }, 8000);
 
 app.use('/api/auth', authRoute)
 app.use('/api/youtube', youtubeRoute)
 app.use('/api/dashboard', dashboardRoute)
+app.use('/api/facebook', facebookRoute)
 
 app.listen(port, () => {
     console.log(`YT Backend Server Running At http://localhost:${port}`);

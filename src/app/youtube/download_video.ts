@@ -3,6 +3,7 @@ import { promisify } from 'util';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
+import Logger from "../../common/logger";
 
 const execPromise = promisify(exec);
 
@@ -88,7 +89,17 @@ export async function downloadVideo(
 
     } catch (error: any) {
       lastError = error;
-      console.error(`❌ Attempt ${attempt} failed:`, error.message);
+      
+      // Create a mock request for logging purposes
+      const mockReq: any = { 
+        method: 'POST', 
+        url: '/youtube/download-video', 
+        headers: {}, 
+        body: { url, folderPath }, 
+        userId: 'system' // Using 'system' as this is an internal process
+      };
+      
+      await Logger.logError(error, mockReq, 'YouTube', 'downloadVideo', `Attempt ${attempt} failed: ${error.message}`);
 
       // Retry with exponential backoff
       if (attempt < retries) {
@@ -99,7 +110,20 @@ export async function downloadVideo(
     }
   }
 
-  throw new Error(`Download failed after ${retries} attempts: ${lastError?.message}`);
+  const finalError = new Error(`Download failed after ${retries} attempts: ${lastError?.message}`);
+  
+  // Create a mock request for logging purposes
+  const mockReq: any = { 
+    method: 'POST', 
+    url: '/youtube/download-video', 
+    headers: {}, 
+    body: { url, folderPath, retries }, 
+    userId: 'system' // Using 'system' as this is an internal process
+  };
+  
+  await Logger.logError(finalError, mockReq, 'YouTube', 'downloadVideo', 'Download failed after all retries');
+  
+  throw finalError;
 }
 
 /**

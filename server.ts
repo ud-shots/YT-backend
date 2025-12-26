@@ -9,6 +9,8 @@ import youtubeRoute from './src/app/youtube/router'
 import dashboardRoute from './src/app/dashboard/router'
 import facebookRoute from './src/app/facebook/router'
 import bodyParser from 'body-parser'
+import { Logs } from './src/models/logs'
+import { globalErrorHandler } from './src/middleware/logging'
 
 const app = express()
 const port = process.env.SERVER_PORT || 3000;
@@ -51,6 +53,9 @@ app.use('/api/auth', authRoute)
 app.use('/api/youtube', youtubeRoute)
 app.use('/api/dashboard', dashboardRoute)
 app.use('/api/facebook', facebookRoute)
+
+// Register global error handler
+app.use(globalErrorHandler);
 
 app.listen(port, () => {
     console.log(`YT Backend Server Running At http://localhost:${port}`);

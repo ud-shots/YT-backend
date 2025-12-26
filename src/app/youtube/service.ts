@@ -8,6 +8,7 @@ import { YouTubeCredential } from "../../models/youtube_credential";
 import { Videos } from "../../models/videos";
 import { downloadVideo } from './download_video';
 import { autoUploadVideo } from "./start_process";
+import Logger from "../../common/logger";
 
 export const oauth2Client = new google.auth.OAuth2(
   process.env.GOOGLE_CLIENT_ID,
@@ -41,7 +42,7 @@ class YoutubeService {
       return Handler.Success(RES_STATUS.E1, STATUS_CODE.EC200, "Link Created Successfully!", { url })
 
     } catch (error: any) {
-      console.error('Error From getYoutubeConsentUrl:- ', error);
+      await Logger.logError(error, req, 'YouTube', 'getYoutubeConsentUrl', 'Error getting YouTube consent URL');
       return Handler.Error(RES_STATUS.E2, STATUS_CODE.EC500, RES_MESSAGE.EM500);
     }
   }
@@ -105,7 +106,7 @@ class YoutubeService {
         `);
 
     } catch (error: any) {
-      console.error('Error From youtubeCallback:- ', error);
+      await Logger.logError(error, req, 'YouTube', 'youtubeCallback', 'Error in YouTube callback');
       res.send(`<script>
         alert('Error connecting to YouTube: ${error.message}');
         window.close();
@@ -151,7 +152,7 @@ class YoutubeService {
       return Handler.Success(RES_STATUS.E1, STATUS_CODE.EC200, "Video In Progress!", { videoId: videoRecord.id });
 
     } catch (error: any) {
-      console.error('Error in uploadVideo:- ', error);
+      await Logger.logError(error, req, 'YouTube', 'uploadVideo', 'Error uploading video');
       return Handler.Error(RES_STATUS.E2, STATUS_CODE.EC500, RES_MESSAGE.EM500);
     }
   }
@@ -201,7 +202,7 @@ class YoutubeService {
       return Handler.Success(RES_STATUS.E1, STATUS_CODE.EC200, "Video In Progress!", { videoId: videoRecord.id });
 
     } catch (error: any) {
-      console.error('Error in uploadVideoApp:- ', error);
+      await Logger.logError(error, req, 'YouTube', 'uploadVideoApp', 'Error uploading video from app');
       return Handler.Error(RES_STATUS.E2, STATUS_CODE.EC500, RES_MESSAGE.EM500);
     }
   }

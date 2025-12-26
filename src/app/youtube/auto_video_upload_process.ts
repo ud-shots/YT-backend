@@ -3,6 +3,7 @@ import path from "path";
 import { google } from "googleapis";
 import { Users } from "../../models/users";
 import moment from 'moment'
+import Logger from "../../common/logger";
 
 /* ================================
    MAIN FUNCTION
@@ -25,14 +26,41 @@ export async function uploadVideoWithSEO(
   const youtube_credential = await YouTubeCredential.findOne({ where: { user_id } });
 
   if (!user) {
+    const mockReq: any = { 
+      method: 'POST', 
+      url: '/youtube/upload-video', 
+      headers: {}, 
+      body: {}, 
+      user: { id: user_id },
+      userId: user_id
+    };
+    await Logger.logError(new Error("User not found"), mockReq, 'YouTube', 'uploadVideoWithSEO', 'User not found during video upload');
     throw new Error("User not found");
   }
 
   if (!youtube_credential) {
+    const mockReq: any = { 
+      method: 'POST', 
+      url: '/youtube/upload-video', 
+      headers: {}, 
+      body: {}, 
+      user: { id: user_id },
+      userId: user_id
+    };
+    await Logger.logError(new Error("YouTube credential not found"), mockReq, 'YouTube', 'uploadVideoWithSEO', 'YouTube credential not found during video upload');
     throw new Error("YouTube credential not found");
   }
 
   if (!youtube_credential.access_token || !youtube_credential.refresh_token) {
+    const mockReq: any = { 
+      method: 'POST', 
+      url: '/youtube/upload-video', 
+      headers: {}, 
+      body: {}, 
+      user: { id: user_id },
+      userId: user_id
+    };
+    await Logger.logError(new Error("YouTube not connected for this user"), mockReq, 'YouTube', 'uploadVideoWithSEO', 'YouTube not connected for user during video upload');
     throw new Error("YouTube not connected for this user");
   }
 
@@ -74,6 +102,15 @@ export async function uploadVideoWithSEO(
   // 4️⃣ Validate file
   const absolutePath = path.resolve(filePath);
   if (!fs.existsSync(absolutePath)) {
+    const mockReq: any = { 
+      method: 'POST', 
+      url: '/youtube/upload-video', 
+      headers: {}, 
+      body: { filePath }, 
+      user: { id: user_id },
+      userId: user_id
+    };
+    await Logger.logError(new Error("Video file not found"), mockReq, 'YouTube', 'uploadVideoWithSEO', 'Video file not found during upload');
     throw new Error("Video file not found");
   }
 
@@ -145,7 +182,7 @@ ${seo.suggestedHashtags?.join(" ")}
   });
 
   // 7️⃣ Validate upload
-  await validateVideo(youtube, youtubeVideoId, video_id);
+  await validateVideo(youtube, youtubeVideoId, video_id, user_id);
 
   // Update video record with final status
   const finalStatus = publishType === "scheduled" ? "scheduled" : "published";
@@ -170,7 +207,7 @@ ${seo.suggestedHashtags?.join(" ")}
    STATUS CHECK
 ================================ */
 
-async function validateVideo(youtube: any, videoId: string, video_id: string) {
+async function validateVideo(youtube: any, videoId: string, video_id: string, user_id?: string) {
   console.log("⏳ Waiting for YouTube processing...");
   await new Promise((r) => setTimeout(r, 60_000));
 
@@ -206,7 +243,16 @@ async function validateVideo(youtube: any, videoId: string, video_id: string) {
 
     console.log("🎉 Video is valid and safe!");
   } catch (error: any) {
-    console.error("Error validating video:", error);
+    const mockReq: any = { 
+      method: 'POST', 
+      url: '/youtube/validate-video', 
+      headers: {}, 
+      body: {}, 
+      user: user_id ? { id: user_id } : undefined,
+      userId: user_id
+    };
+    await Logger.logError(error, mockReq, 'YouTube', 'validateVideo', 'Error validating video');
+        
     // Update video status to 'blocked' if there was an error
     await Videos.update({
       status: 'blocked',

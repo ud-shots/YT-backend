@@ -5,6 +5,7 @@ import { Op } from "sequelize"
 import axios from "axios"
 import { Users } from "../../models/users"
 import { FacebookCredential } from "../../models/facebook_credential"
+import Logger from "../../common/logger"
 
 const GRAPH_URL = process.env.GRAPH_URL || ''
 const appId = process.env.FACEBOOK_APP_ID || ''
@@ -64,7 +65,7 @@ class FacebookService {
       return Handler.Success(RES_STATUS.E1, STATUS_CODE.EC200, "Access token fetched successfully!", { access_token: res.data.access_token });
 
     } catch (error: any) {
-      console.error('Error fetching Facebook access token:', error);
+      await Logger.logError(error, req, 'Facebook', 'getFacebookAccessToken', 'Error fetching Facebook access token');
       return Handler.Error(RES_STATUS.E2, STATUS_CODE.EC500, RES_MESSAGE.EM500);
     }
   }
@@ -98,7 +99,7 @@ class FacebookService {
       return Handler.Success(RES_STATUS.E1, STATUS_CODE.EC200, "Facebook page connected successfully!", null);
 
     } catch (error: any) {
-      console.error('Error in finalConnect:', error);
+      await Logger.logError(error, req, 'Facebook', 'finalConnect', 'Error in finalConnect');
       return Handler.Error(RES_STATUS.E2, STATUS_CODE.EC500, RES_MESSAGE.EM500);
     }
   }

@@ -5,6 +5,7 @@ import { Videos } from "../../models/videos";
 import { Users } from "../../models/users";
 import { postToFacebook, postToInstagram } from "../facebook/auto.posts";
 import { FacebookCredential } from "../../models/facebook_credential";
+import Logger from "../../common/logger";
 
 export async function autoUploadVideo(type: string, data: any, file: any | null = null, user_id: string, video_id: string) {
 
@@ -48,10 +49,37 @@ export async function autoUploadVideo(type: string, data: any, file: any | null 
             }
             const youtube = await uploadVideoWithSEO(full_path, seo, data.visibility, data?.date || null, user_id, video_id)
             console.log('youtube-=----------------->', youtube)
+
+            // Delete the uploaded video file after processing
+            const fs = require('fs');
+            const directoryPath = `${process.cwd()}/public/uploads/videos/`;
+            if (fs.existsSync(directoryPath)) {
+                const files = fs.readdirSync(directoryPath);
+                for (const file of files) {
+                    const filePath = `${directoryPath}${file}`;
+                    if (fs.statSync(filePath).isFile()) {
+                        fs.unlinkSync(filePath);
+                        console.log('🗑️  Deleted video file:', filePath);
+                    }
+                }
+            }
+
+            console.log('directory cleaned-=----------------->', youtube)
+
         }
 
     } catch (error: any) {
-        console.error('Error in autoUploadVideo:', error);
+        // Create a mock request object for logging purposes
+        const mockReq: any = { 
+            method: 'POST', 
+            url: '/youtube/auto-upload', 
+            headers: {}, 
+            body: {}, 
+            user: { id: user_id },
+            userId: user_id
+        };
+        
+        await Logger.logError(error, mockReq, 'YouTube', 'autoUploadVideo', 'Error in auto upload video process');
 
         // Update video status to 'blocked' if there was an error
         await Videos.update({

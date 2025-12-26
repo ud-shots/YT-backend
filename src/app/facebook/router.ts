@@ -5,6 +5,7 @@ import Handler from '../../common/handler'
 import handleAuthorization from '../../middleware/handleAuthorization'
 import dtoValidationMiddleware from '../../middleware/validation'
 import { FinalConnect, GetFacebookAccessToken } from '../../dto/facebook'
+import { loggingMiddleware } from '../../middleware/logging'
 
 class FacebookRouterClass {
   public router = express.Router()
@@ -32,8 +33,8 @@ class FacebookRouterClass {
   }
 
   private initializeRoutes(): void {
-    this.router.post("/get-access-token", handleAuthorization, dtoValidationMiddleware(GetFacebookAccessToken), this.getFacebookAccessToken)
-    this.router.post("/final-connect", handleAuthorization, dtoValidationMiddleware(FinalConnect), this.finalConnect)
+    this.router.post("/get-access-token", handleAuthorization, dtoValidationMiddleware(GetFacebookAccessToken), loggingMiddleware('Facebook', 'getAccessToken'), this.getFacebookAccessToken)
+    this.router.post("/final-connect", handleAuthorization, dtoValidationMiddleware(FinalConnect), loggingMiddleware('Facebook', 'finalConnect'), this.finalConnect)
 
   }
 }

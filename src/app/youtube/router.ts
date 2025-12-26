@@ -6,6 +6,7 @@ import Handler from '../../common/handler';
 import { callback, uploadVideo } from '../../dto/youtube';
 import handleAuthorization from '../../middleware/handleAuthorization';
 import upload from '../../middleware/multer';
+import { loggingMiddleware } from '../../middleware/logging';
 
 class YoutubeRouterClass {
   public router = express.Router();
@@ -42,10 +43,10 @@ class YoutubeRouterClass {
   }
 
   private initializeRoutes(): void {
-    this.router.get("/url", handleAuthorization, this.getYoutubeConsentUrl)
-    this.router.get("/callback", YoutubeService.youtubeCallback)
-    this.router.post("/upload-video-app", dtoValidationMiddleware(uploadVideo), this.uploadVideoApp)
-    this.router.post("/upload-video", handleAuthorization, upload.single("file"), dtoValidationMiddleware(uploadVideo), this.uploadVideo)
+    this.router.get("/url", handleAuthorization, loggingMiddleware('YouTube', 'getConsentUrl'), this.getYoutubeConsentUrl)
+    this.router.get("/callback", loggingMiddleware('YouTube', 'callback'), YoutubeService.youtubeCallback)
+    this.router.post("/upload-video-app", dtoValidationMiddleware(uploadVideo), loggingMiddleware('YouTube', 'uploadVideoApp'), this.uploadVideoApp)
+    this.router.post("/upload-video", handleAuthorization, upload.single("file"), dtoValidationMiddleware(uploadVideo), loggingMiddleware('YouTube', 'uploadVideo'), this.uploadVideo)
   }
 }
 

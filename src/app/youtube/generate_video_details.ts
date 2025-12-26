@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { GoogleAIFileManager } from "@google/generative-ai/server";
+import Logger from "../../common/logger";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 const fileManager = new GoogleAIFileManager(process.env.GEMINI_API_KEY!);
@@ -170,7 +171,17 @@ RETURN ONLY THIS JSON STRUCTURE:
             break;
         } catch (err: any) {
             retry++;
-            console.warn(`⚠️ Retry ${retry}/${MAX_RETRIES}: ${err.message}`);
+            
+            // Create a mock request for logging purposes
+            const mockReq: any = { 
+                method: 'POST', 
+                url: '/youtube/analyze-video', 
+                headers: {}, 
+                body: { videoPath, context }, 
+                userId: 'system' // Using 'system' as this is an internal process
+            };
+            
+            await Logger.logError(err, mockReq, 'YouTube', 'analyzeVideoForYouTubeSEO', `Retry ${retry}/${MAX_RETRIES}: ${err.message}`);
 
             if (err.status === 503 && retry < MAX_RETRIES) {
                 await new Promise((r) => setTimeout(r, 10_000));
@@ -181,7 +192,19 @@ RETURN ONLY THIS JSON STRUCTURE:
     }
 
     if (!response) {
-        throw new Error("Gemini failed to generate response");
+        const error = new Error("Gemini failed to generate response");
+        
+        // Create a mock request for logging purposes
+        const mockReq: any = { 
+            method: 'POST', 
+            url: '/youtube/analyze-video', 
+            headers: {}, 
+            body: { videoPath, context }, 
+            userId: 'system' // Using 'system' as this is an internal process
+        };
+        
+        await Logger.logError(error, mockReq, 'YouTube', 'analyzeVideoForYouTubeSEO', 'Gemini failed to generate response');
+        throw error;
     }
 
     /* =======================
@@ -191,7 +214,19 @@ RETURN ONLY THIS JSON STRUCTURE:
     const match = text.match(/\{[\s\S]*\}/);
 
     if (!match) {
-        throw new Error("Invalid JSON returned by Gemini");
+        const error = new Error("Invalid JSON returned by Gemini");
+        
+        // Create a mock request for logging purposes
+        const mockReq: any = { 
+            method: 'POST', 
+            url: '/youtube/analyze-video', 
+            headers: {}, 
+            body: { videoPath, context }, 
+            userId: 'system' // Using 'system' as this is an internal process
+        };
+        
+        await Logger.logError(error, mockReq, 'YouTube', 'analyzeVideoForYouTubeSEO', 'Invalid JSON returned by Gemini');
+        throw error;
     }
 
     return JSON.parse(match[0]);

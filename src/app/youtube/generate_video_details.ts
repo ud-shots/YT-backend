@@ -11,22 +11,11 @@ export async function analyzeVideoForYouTubeSEO(
 ) {
     console.log("⬆️ Uploading video to Gemini...");
 
-    /* =======================
-       1️⃣ Upload Video
-    ======================= */
-    const upload = await fileManager.uploadFile(videoPath, {
-        mimeType: "video/mp4",
-        displayName: "youtube-video",
-    });
-
+    const upload = await fileManager.uploadFile(videoPath, { mimeType: "video/mp4", displayName: "youtube-video", });
     const fileName = upload.file.name;
     const videoUri = upload.file.uri;
 
     console.log("✅ Uploaded:", videoUri);
-
-    /* =======================
-       2️⃣ Wait Until ACTIVE
-    ======================= */
     console.log("⏳ Waiting for file processing...");
 
     let state = upload.file.state;
@@ -54,9 +43,6 @@ export async function analyzeVideoForYouTubeSEO(
 
     console.log("✅ File is ACTIVE");
 
-    /* =======================
-       3️⃣ Use Latest PRO Model
-    ======================= */
     const model = genAI.getGenerativeModel({
         model: "gemini-2.5-flash",
         generationConfig: {
@@ -64,34 +50,6 @@ export async function analyzeVideoForYouTubeSEO(
             maxOutputTokens: 4096,
         },
     });
-
-    /* =======================
-       4️⃣ SEO Prompt
-    ======================= */
-    //   const prompt = `
-    // You are a professional YouTube SEO expert (2024–2025).
-
-    // Analyze the attached video carefully and generate SEO-optimized metadata.
-
-    // ${context ? `Context:\n${context}` : ""}
-
-    // Rules:
-    // - Title must be clickable and SEO friendly
-    // - Description must include keywords naturally
-    // - Tags & keywords should be high-ranking
-    // - Trending topics should be relevant
-    // - Hashtags must be YouTube safe
-
-    // Return ONLY valid JSON in this format:
-    // {
-    //   "title": "",
-    //   "description": "",
-    //   "tags": [],
-    //   "keywords": [],
-    //   "trendingTopics": [],
-    //   "suggestedHashtags": []
-    // }
-    // `;
 
     const prompt = `
 You are a senior YouTube SEO strategist (2024–2025) with deep knowledge of
@@ -150,37 +108,22 @@ RETURN ONLY THIS JSON STRUCTURE:
 `;
 
 
-    /* =======================
-       5️⃣ Generate Content
-    ======================= */
+
     let response;
     let retry = 0;
     const MAX_RETRIES = 5;
 
     while (retry < MAX_RETRIES) {
+
         try {
-            response = await model.generateContent([
-                prompt,
-                {
-                    fileData: {
-                        fileUri: videoUri,
-                        mimeType: "video/mp4",
-                    },
-                },
-            ]);
+
+            response = await model.generateContent([prompt, { fileData: { fileUri: videoUri, mimeType: "video/mp4", }, },]);
             break;
+
         } catch (err: any) {
+
             retry++;
-            
-            // Create a mock request for logging purposes
-            const mockReq: any = { 
-                method: 'POST', 
-                url: '/youtube/analyze-video', 
-                headers: {}, 
-                body: { videoPath, context }, 
-                userId: 'system' // Using 'system' as this is an internal process
-            };
-            
+            const mockReq: any = { method: 'POST', url: '/youtube/analyze-video', headers: {}, body: { videoPath, context }, userId: 'system' };
             await Logger.logError(err, mockReq, 'YouTube', 'analyzeVideoForYouTubeSEO', `Retry ${retry}/${MAX_RETRIES}: ${err.message}`);
 
             if (err.status === 503 && retry < MAX_RETRIES) {
@@ -188,43 +131,25 @@ RETURN ONLY THIS JSON STRUCTURE:
             } else {
                 throw err;
             }
+
         }
+
     }
 
     if (!response) {
         const error = new Error("Gemini failed to generate response");
-        
-        // Create a mock request for logging purposes
-        const mockReq: any = { 
-            method: 'POST', 
-            url: '/youtube/analyze-video', 
-            headers: {}, 
-            body: { videoPath, context }, 
-            userId: 'system' // Using 'system' as this is an internal process
-        };
-        
+        const mockReq: any = { method: 'POST', url: '/youtube/analyze-video', headers: {}, body: { videoPath, context }, userId: 'system' };
         await Logger.logError(error, mockReq, 'YouTube', 'analyzeVideoForYouTubeSEO', 'Gemini failed to generate response');
         throw error;
     }
 
-    /* =======================
-       6️⃣ Safe JSON Parse
-    ======================= */
+
     const text = response.response.text();
     const match = text.match(/\{[\s\S]*\}/);
 
     if (!match) {
         const error = new Error("Invalid JSON returned by Gemini");
-        
-        // Create a mock request for logging purposes
-        const mockReq: any = { 
-            method: 'POST', 
-            url: '/youtube/analyze-video', 
-            headers: {}, 
-            body: { videoPath, context }, 
-            userId: 'system' // Using 'system' as this is an internal process
-        };
-        
+        const mockReq: any = { method: 'POST', url: '/youtube/analyze-video', headers: {}, body: { videoPath, context }, userId: 'system' };
         await Logger.logError(error, mockReq, 'YouTube', 'analyzeVideoForYouTubeSEO', 'Invalid JSON returned by Gemini');
         throw error;
     }

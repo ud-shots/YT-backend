@@ -6,7 +6,6 @@ import { google } from "googleapis";
 import { Users } from "../../models/users";
 import { YouTubeCredential } from "../../models/youtube_credential";
 import { Videos } from "../../models/videos";
-import { downloadVideo } from './download_video';
 import { autoUploadVideo } from "./start_process";
 import Logger from "../../common/logger";
 
@@ -16,10 +15,7 @@ export const oauth2Client = new google.auth.OAuth2(
   process.env.GOOGLE_REDIRECT_URI
 );
 
-export const SCOPES = [
-  "https://www.googleapis.com/auth/youtube.upload",
-  "https://www.googleapis.com/auth/youtube.force-ssl",
-];
+export const SCOPES = ["https://www.googleapis.com/auth/youtube.upload", "https://www.googleapis.com/auth/youtube.force-ssl",];
 
 class YoutubeService {
 
@@ -27,10 +23,7 @@ class YoutubeService {
     try {
 
       const { userId } = req;
-
-      const state = Buffer.from(
-        JSON.stringify({ userId })
-      ).toString("base64");
+      const state = Buffer.from(JSON.stringify({ userId })).toString("base64");
 
       const url = oauth2Client.generateAuthUrl({
         access_type: "offline",
@@ -99,18 +92,11 @@ class YoutubeService {
       }, 'YouTube credential saved---------->')
 
       // Close popup safely
-      res.send(`
-         <script>
-          window.close();
-        </script>
-        `);
+      res.send(`<script>window.close();</script>`);
 
     } catch (error: any) {
       await Logger.logError(error, req, 'YouTube', 'youtubeCallback', 'Error in YouTube callback');
-      res.send(`<script>
-        alert('Error connecting to YouTube: ${error.message}');
-        window.close();
-        </script>`);
+      res.send(`<script>alert('Error connecting to YouTube: ${error.message}');window.close();</script>`);
     }
   }
 

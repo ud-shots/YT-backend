@@ -35,7 +35,6 @@ class FacebookRouterClass {
   private initializeRoutes(): void {
     this.router.post("/get-access-token", handleAuthorization, dtoValidationMiddleware(GetFacebookAccessToken), loggingMiddleware('Facebook', 'getAccessToken'), this.getFacebookAccessToken)
     this.router.post("/final-connect", handleAuthorization, dtoValidationMiddleware(FinalConnect), loggingMiddleware('Facebook', 'finalConnect'), this.finalConnect)
-
   }
 }
 

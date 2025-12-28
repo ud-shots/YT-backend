@@ -58,7 +58,7 @@ export async function cleanShareUrl(user_id: string, pending_upload_media_id: st
 
 const buildYtDlpCommand = (platform: Platform, cleanedUrl: string, jobId: string, outputDir: string) => {
 
-    const cookiesPath = `${process.cwd()}/public/cookies/www.instagram.com_cookies.txt`;
+    const cookiesPath = `${process.cwd()}/src/cookies/www.instagram.com_cookies.txt`;
     const outputTemplate = `${outputDir}/${jobId}_%(playlist_index)s.%(ext)s`;
 
     switch (platform) {

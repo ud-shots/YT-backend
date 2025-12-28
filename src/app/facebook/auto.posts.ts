@@ -44,6 +44,34 @@ export async function postToFacebook(pageId: string, pageToken: string, mediaUrl
    INSTAGRAM (IMAGE / VIDEO)
 ========================= */
 
+async function waitForInstagramProcessing(creationId: string, accessToken: string, maxAttempts = 20) {
+  for (let i = 0; i < maxAttempts; i++) {
+    const { data } = await axios.get(
+      `${GRAPH_URL}/${creationId}`,
+      {
+        params: {
+          fields: "status_code",
+          access_token: accessToken,
+        },
+      }
+    );
+
+    if (data.status_code === "FINISHED") {
+      return;
+    }
+
+    if (data.status_code === "ERROR") {
+      throw new Error("Instagram media processing failed");
+    }
+
+    // wait 5 seconds before next check
+    await new Promise(res => setTimeout(res, 5000));
+  }
+
+  throw new Error("Instagram media processing timed out");
+}
+
+
 export async function postToInstagram(igBusinessId: string, pageToken: string, mediaUrl: string, caption: string, mediaType: MediaType) {
   // Step 1: Create container
   const containerPayload: any = { access_token: pageToken, caption, };
@@ -55,16 +83,18 @@ export async function postToInstagram(igBusinessId: string, pageToken: string, m
     containerPayload.image_url = mediaUrl;
   }
 
-  const container = await axios.post(
+  const { data: container } = await axios.post(
     `${GRAPH_URL}/${igBusinessId}/media`,
     containerPayload
   );
 
+  const creationId = container.id;
+  await waitForInstagramProcessing(creationId, pageToken);
   // Step 2: Publish
-  const publish = await axios.post(
+  const { data: publish } = await axios.post(
     `${GRAPH_URL}/${igBusinessId}/media_publish`,
     {
-      creation_id: container.data.id,
+      creation_id: creationId,
       access_token: pageToken,
     }
   );

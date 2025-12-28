@@ -109,8 +109,8 @@ const mediaProccess = async (pending_upload_media_id: string) => {
         }
 
         if (find_insta_facebook_credential) {
-            const instagram = uploadOnInstagram(pending_upload_media_id, find_insta_facebook_credential?.insta_business_account_id || '', find_insta_facebook_credential?.page_access_token || '', file_path, seo.title, media_type)
-            console.log('instagram---------->', instagram);
+            // const instagram = uploadOnInstagram(pending_upload_media_id, find_insta_facebook_credential?.insta_business_account_id || '', find_insta_facebook_credential?.page_access_token || '', file_path, seo.title, media_type)
+            // console.log('instagram---------->', instagram);
             const facebook = uploadOnFacebook(pending_upload_media_id, find_insta_facebook_credential?.page_id || '', find_insta_facebook_credential?.page_access_token || '', file_path, seo.title, media_type)
             console.log('facebook---------->', facebook);
         }

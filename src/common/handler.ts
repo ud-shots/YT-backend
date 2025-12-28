@@ -1,6 +1,8 @@
 import { RES_STATUS } from "./statusMessageCode";
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv'
+import moment from "moment";
+import { Logs } from "../models/logs";
 dotenv.config()
 //@ts-ignore
 const crypto = require('crypto');
@@ -76,6 +78,20 @@ export default class Handler {
     }
 
     return { status: true }
+  }
+
+  static async addLogs(user_id: string, upload_pendin_media_id: string, error_message: string, platform: string) {
+
+    let time = await this.getTime()
+    let obj: any = { user_id, upload_pendin_media_id, error_message, platform, time }
+    await Logs.create(obj)
+
+    return { status: true }
+    
+  }
+
+  static async getTime() {
+    return moment().format('YYYY-MM-DD HH:mm:ss')
   }
 
 }

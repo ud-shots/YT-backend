@@ -3,11 +3,10 @@ dotenv.config();
 import { RES_MESSAGE, RES_STATUS, STATUS_CODE } from "../../common/statusMessageCode";
 import Handler from "../../common/handler";
 import { google } from "googleapis";
-import { Users } from "../../models/users";
 import { YouTubeCredential } from "../../models/youtube_credential";
-import { Videos } from "../../models/videos";
-import { autoUploadVideo } from "./start_process";
 import Logger from "../../common/logger";
+import moment from "moment";
+import { Pending_Uplaod_Media } from "../../models/pending_upload_media";
 
 export const oauth2Client = new google.auth.OAuth2(
   process.env.GOOGLE_CLIENT_ID,
@@ -18,6 +17,30 @@ export const oauth2Client = new google.auth.OAuth2(
 export const SCOPES = ["https://www.googleapis.com/auth/youtube.upload", "https://www.googleapis.com/auth/youtube.force-ssl",];
 
 class YoutubeService {
+
+  async detectPlatform(url: string) {
+    try {
+
+      const { hostname } = new URL(url);
+
+      if (hostname.includes('youtube.com') || hostname.includes('youtu.be')) {
+        return 'youtube';
+      }
+
+      if (hostname.includes('instagram.com')) {
+        return 'instagram';
+      }
+
+      if (hostname.includes('facebook.com') || hostname.includes('fb.watch') || hostname.includes('fb.com')) {
+        return 'facebook';
+      }
+
+      return 'unknown';
+
+    } catch {
+      return 'unknown'; // invalid URL
+    }
+  }
 
   async getYoutubeConsentUrl(req: any) {
     try {
@@ -103,39 +126,17 @@ class YoutubeService {
   async uploadVideo(req: any) {
     try {
 
-      const { url, visibility, schedule } = req.body;
+      const { url = null, visibility, schedule } = req.body;
       const { file, userId } = req;
 
       if (!file && !url) {
         return Handler.Error(RES_STATUS.E2, STATUS_CODE.EC422, 'file or url any one require');
       }
 
-      // Verify user has YouTube credentials
-      const youtubeCredential = await YouTubeCredential.findOne({ where: { user_id: userId } });
-      if (!youtubeCredential || !youtubeCredential.is_active) {
-        return Handler.Error(RES_STATUS.E2, STATUS_CODE.EC400, 'YouTube account not connected or not active');
-      }
+      const obj: any = { user_id: userId, type: 'file', visibility, schedule_date: schedule ? moment(schedule).format('YYYY-MM-DD') : null, url, file_name: file ? file.filename : null }
+      await Pending_Uplaod_Media.create(obj);
 
-      // Create video record in database
-      let obj: any = {
-        user_id: userId,
-        filename: file ? file.originalname : url,
-        original_url: url || null,
-        local_path: file ? file.path : null,
-        visibility: visibility || 'private',
-        status: 'uploading',
-        scheduled_at: schedule ? new Date(schedule) : undefined
-      };
-      const videoRecord = await Videos.create(obj);
-
-      // Start the upload process
-      if (url) {
-        autoUploadVideo('url', req?.body, null, userId || '', videoRecord.id?.toString() || '');
-      } else {
-        autoUploadVideo('file', req?.body, file, userId || '', videoRecord.id?.toString() || '');
-      }
-
-      return Handler.Success(RES_STATUS.E1, STATUS_CODE.EC200, "Video In Progress!", { videoId: videoRecord.id });
+      return Handler.Success(RES_STATUS.E1, STATUS_CODE.EC200, "Video In Progress!", null);
 
     } catch (error: any) {
       await Logger.logError(error, req, 'YouTube', 'uploadVideo', 'Error uploading video');
@@ -146,46 +147,14 @@ class YoutubeService {
   async uploadVideoApp(req: any) {
     try {
 
+      const { userId } = req
       const { url, visibility, schedule } = req.body;
 
-      // Find a user for the app (this should be improved in a real app)
-      const user = await Users.findOne({ where: { email: 'shots.ud@gmail.com' }, attributes: ['id'] });
-      const userId = user?.id;
+      const platform = await this.detectPlatform(url);
+      const obj: any = { user_id: userId, type: 'url', url, visibility, schedule_date: schedule ? moment(schedule).format('YYYY-MM-DD') : null, platform }
+      const data: any = await Pending_Uplaod_Media.create(obj);
 
-      if (!userId) {
-        return Handler.Error(RES_STATUS.E2, STATUS_CODE.EC404, 'Default user not found');
-      }
-
-      if (!url) {
-        return Handler.Error(RES_STATUS.E2, STATUS_CODE.EC422, 'URL is required');
-      }
-
-      // Verify user has YouTube credentials
-      const youtubeCredential = await YouTubeCredential.findOne({ where: { user_id: userId } });
-      if (!youtubeCredential || !youtubeCredential.is_active) {
-        return Handler.Error(RES_STATUS.E2, STATUS_CODE.EC400, 'YouTube account not connected or not active');
-      }
-
-      // Create video record in database
-      let obj: any = {
-        user_id: userId,
-        filename: url,
-        original_url: url || null,
-        local_path: null,
-        visibility: visibility || 'private',
-        status: 'uploading',
-        scheduled_at: schedule ? new Date(schedule) : undefined
-      };
-      const videoRecord = await Videos.create(obj);
-
-      // Start the upload process
-      if (url) {
-        autoUploadVideo('url', req?.body, null, userId || '', videoRecord.id?.toString() || '');
-      } else {
-        autoUploadVideo('file', req?.body, undefined, userId || '', videoRecord.id?.toString() || '');
-      }
-
-      return Handler.Success(RES_STATUS.E1, STATUS_CODE.EC200, "Video In Progress!", { videoId: videoRecord.id });
+      return Handler.Success(RES_STATUS.E1, STATUS_CODE.EC200, "Video In Progress!", null);
 
     } catch (error: any) {
       await Logger.logError(error, req, 'YouTube', 'uploadVideoApp', 'Error uploading video from app');

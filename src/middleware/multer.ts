@@ -5,7 +5,7 @@ import path from "path";
 
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        const uploadPath = `${process.cwd()}/public/uploads/videos/`;
+        const uploadPath = `${process.cwd()}/public/uploads/media/`;
 
         // Check if directory exists, if not create it
         if (!fs.existsSync(uploadPath)) {

@@ -19,8 +19,4 @@ export class uploadVideo {
   @IsEnum(['public', 'unlisted', 'private'])
   visibility?: string;
 
-  @IsOptional()
-  @IsString()
-  schedule?: string;
-
 }

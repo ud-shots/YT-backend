@@ -44,8 +44,8 @@ export class Videos extends Model {
   @Column({ type: DataType.ENUM('public', 'private', 'unlisted'), allowNull: true })
   visibility?: 'public' | 'private' | 'unlisted';
 
-  @Column({ type: DataType.ENUM('draft', 'uploading', 'processing', 'checking', 'published', 'scheduled', 'blocked', 'other'), allowNull: false, defaultValue: 'draft' })
-  status?: 'draft' | 'uploading' | 'processing' | 'checking' | 'published' | 'scheduled' | 'blocked' | 'other';
+  @Column({ type: DataType.ENUM('draft', 'uploading', 'processing', 'checking', 'published', 'scheduled', 'blocked', 'other', 'check_failed'), allowNull: false, defaultValue: 'draft' })
+  status?: 'draft' | 'uploading' | 'processing' | 'checking' | 'published' | 'scheduled' | 'blocked' | 'other' | 'check_failed';
 
   @Column({ type: DataType.INTEGER, allowNull: true, defaultValue: 0 })
   progress?: number;

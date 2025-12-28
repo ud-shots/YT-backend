@@ -54,7 +54,7 @@ export async function uploadVideoWithSEO(filePath: string, seo: any, publishType
         }
       }
 
-      await user.save();
+      // await user.save();
       //@ts-ignore
       await YouTubeCredential.update({ access_token: tokens.access_token, token_expiry: expiry ? expiry.toISOString() : null }, { where: { user_id } });
     }

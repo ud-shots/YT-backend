@@ -5,7 +5,7 @@ import mediaProccess from './media_proccess';
 cron.schedule('* * * * *', () => {
     console.log('Cron job running every 1 minute');
     (async () => {
-        const pending_upload_media: any = await Pending_Uplaod_Media.findOne({ where: { status: 'pending' }, order: [['createdAt', 'ASC']] })
+        const pending_upload_media: any = await Pending_Uplaod_Media.findOne({ where: { status: 'initiate' }, order: [['createdAt', 'ASC']] })
         if (pending_upload_media) {
             mediaProccess(pending_upload_media?.id)
         }

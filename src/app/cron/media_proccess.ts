@@ -122,6 +122,7 @@ const mediaProccess = async (pending_upload_media_id: string) => {
             console.log('youtube---------->', youtube);
         }
 
+        await Pending_Uplaod_Media.update({ status: 'success' }, { where: { id: pending_upload_media_id } });
         return true
 
     } catch (error: any) {

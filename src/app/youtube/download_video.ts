@@ -25,7 +25,7 @@ export async function downloadVideo(url: string, folderPath: string, retries: nu
         fs.mkdirSync(folderPath, { recursive: true });
       }
 
-      const fileExtension = url.split('.').pop()?.toLowerCase() || 'mp4';
+      const fileExtension = 'mp4';
       // Generate unique filename using timestamp and random hash
       const timestamp = Date.now();
       const randomHash = crypto.randomBytes(8).toString('hex');

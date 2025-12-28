@@ -41,9 +41,9 @@ export async function autoUploadVideo(type: string, data: any, file: any | null 
 
             if (find_facebook_credential) {
                 console.log('find_facebook_credential---', find_facebook_credential)
-                const facebook = await postToFacebook(find_facebook_credential?.page_id || '', find_facebook_credential?.page_access_token || '', full_path, seo.title, mediaType)
+                const facebook = postToFacebook(find_facebook_credential?.page_id || '', find_facebook_credential?.page_access_token || '', full_path, seo.title, mediaType)
                 console.log('facebook---', facebook)
-                const insta = await postToInstagram(find_facebook_credential?.insta_business_account_id || '', find_facebook_credential?.page_access_token || '', full_path, seo.title, mediaType)
+                const insta = postToInstagram(find_facebook_credential?.insta_business_account_id || '', find_facebook_credential?.page_access_token || '', full_path, seo.title, mediaType)
                 console.log('insta---', insta)
             }
             const youtube = await uploadVideoWithSEO(full_path, seo, data.visibility, data?.date || null, user_id, video_id)
@@ -70,6 +70,6 @@ export async function autoUploadVideo(type: string, data: any, file: any | null 
         await Logger.logError(error, mockReq, 'YouTube', 'autoUploadVideo', 'Error in auto upload video process');
         console.log(error, 'Error in auto upload video process')
         // Update video status to 'blocked' if there was an error
-        await Videos.update({ status: 'blocked', rejection_reason: error.message || 'Unknown error occurred during upload' }, { where: { id: video_id } });
+        await Videos.update({ status: 'other', rejection_reason: error.message || 'Unknown error occurred during upload' }, { where: { id: video_id } });
     }
 }

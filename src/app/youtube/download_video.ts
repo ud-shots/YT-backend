@@ -42,7 +42,16 @@ export async function downloadVideo(url: string, folderPath: string, retries: nu
       } else if (platform === 'facebook') {
         command = `yt-dlp -f "best[ext=mp4]/best" --merge-output-format mp4 --no-check-certificates -o "${outputPath}" "${cleanedUrl}"`;
       } else if (platform === 'instagram') {
-        command = `yt-dlp -f "best[ext=mp4]/best" --merge-output-format mp4 --no-check-certificates -o "${outputPath}" "${cleanedUrl}"`;
+        let cookiesPath = `${process.cwd()}/public/cookies/www.instagram.com_cookies.txt`
+
+        command = `yt-dlp \
+  --cookies "${cookiesPath}" \
+  --force-ipv4 \
+  -f "best[ext=mp4]/best" \
+  --merge-output-format mp4 \
+  -o "${outputPath}" \
+  "${cleanedUrl}"`;
+
       } else {
         throw new Error('Unsupported platform. Please provide a YouTube, Facebook, or Instagram URL.');
       }

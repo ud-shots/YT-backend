@@ -1,7 +1,7 @@
 import cron from 'node-cron';
 import { Pending_Uplaod_Media } from '../../models/pending_upload_media';
 import mediaProccess from './media_proccess';
-
+import moment from 'moment'
 /**
  * Upload schedule (24-hour format)
  */
@@ -40,25 +40,19 @@ const schedule: Record<string, { start_time: string; end_time: string }[]> = {
  * Helper: Check if current time is inside allowed window
  */
 function isWithinSchedule(): boolean {
-    const now = new Date();
+    const now = moment();
 
-    const day = now
-        .toLocaleDateString('en-US', { weekday: 'long' })
-        .toLowerCase();
-
-    const currentMinutes = now.getHours() * 60 + now.getMinutes();
-
+    const day = now.format('dddd').toLowerCase(); // monday, tuesday, etc.
     const daySchedule = schedule[day];
+
     if (!daySchedule) return false;
 
     return daySchedule.some(({ start_time, end_time }) => {
-        const [sh, sm] = start_time.split(':').map(Number);
-        const [eh, em] = end_time.split(':').map(Number);
+        const start = moment(start_time, 'HH:mm');
+        const end = moment(end_time, 'HH:mm');
 
-        const startMinutes = sh * 60 + sm;
-        const endMinutes = eh * 60 + em;
-
-        return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
+        // same-day comparison, inclusive
+        return now.isBetween(start, end, undefined, '[]');
     });
 }
 
@@ -98,7 +92,7 @@ cron.schedule('* * * * *', async () => {
 cron.schedule('*/15 * * * * *', async () => {
     console.log('Cron job running every 15 second');
     try {
-       
+        isWithinSchedule()
         const response = await fetch('https://yt-backend-rvma.onrender.com/');
 
         if (!response.ok) {

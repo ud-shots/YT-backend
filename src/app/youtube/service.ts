@@ -46,11 +46,13 @@ class YoutubeService {
     try {
 
       const { userId } = req;
-      const state = Buffer.from(JSON.stringify({ userId })).toString("base64");
+      const { platform = 'web' } = req.query;
+
+      const state = Buffer.from(JSON.stringify({ userId, platform })).toString("base64");
 
       const url = oauth2Client.generateAuthUrl({
         access_type: "offline",
-        prompt: "consent",
+        prompt: "consent select_account",
         scope: SCOPES,
         state,
       });
@@ -72,7 +74,7 @@ class YoutubeService {
         Buffer.from(state as string, "base64").toString()
       );
 
-      const { userId } = decodedState;
+      const { userId, platform } = decodedState;
 
       const { tokens } = await oauth2Client.getToken(code as string);
       oauth2Client.setCredentials(tokens);
@@ -88,20 +90,39 @@ class YoutubeService {
       });
 
       console.log(tokens, 'hello token---------->')
-      const channel = channelRes.data.items?.[0];
+      const channel: any = channelRes.data.items?.[0];
 
       // Create or update YouTube credential record
-      await YouTubeCredential.upsert({
-        user_id: userId,
-        channel_id: channel?.id,
-        channel_title: channel?.snippet?.title,
-        access_token: tokens.access_token,
-        refresh_token: tokens.refresh_token,
-        token_expiry: tokens.expiry_date
-          ? String(new Date(tokens.expiry_date))
-          : null,
-        is_active: true,
-      } as any);
+
+      //@ts-ignore
+      const find_exists = await YouTubeCredential.findOne({ where: { user_id: userId, channel_id: channel?.id }, raw: true });
+
+      if (find_exists) {
+        //@ts-ignore
+        await YouTubeCredential.update({
+          channel_id: channel?.id,
+          channel_title: channel?.snippet?.title,
+          access_token: tokens.access_token,
+          refresh_token: tokens.refresh_token,
+          token_expiry: tokens.expiry_date
+            ? String(new Date(tokens.expiry_date))
+            : null,
+          is_active: true,
+        }, { where: { user_id: userId, channel_id: channel?.id } });
+      } else {
+        await YouTubeCredential.create({
+          user_id: userId,
+          channel_id: channel?.id,
+          channel_title: channel?.snippet?.title,
+          access_token: tokens.access_token,
+          refresh_token: tokens.refresh_token,
+          token_expiry: tokens.expiry_date
+            ? String(new Date(tokens.expiry_date))
+            : null,
+          is_active: true,
+        } as any);
+      }
+
 
       console.log(tokens, 'hello token---------->')
       console.log({
@@ -115,9 +136,20 @@ class YoutubeService {
       }, 'YouTube credential saved---------->')
 
       // Close popup safely
-      res.send(`<script>window.close();</script>`);
+      if (platform == 'app') {
+        res.send(`
+          <script>
+            alert("YouTube Connected Successfully!");
+            window.close();
+          </script>
+        `);
+
+      } else {
+        res.send(`<script>window.close();</script>`);
+      }
 
     } catch (error: any) {
+      console.log("error in YouTube callback", error);
       await Logger.logError(error, req, 'YouTube', 'youtubeCallback', 'Error in YouTube callback');
       res.send(`<script>alert('Error connecting to YouTube: ${error.message}');window.close();</script>`);
     }

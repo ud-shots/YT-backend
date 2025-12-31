@@ -21,7 +21,7 @@ class AuthService {
       const { email, password } = req.body;
 
       // Find user with basic information only
-      const user: any = await Users.findOne({ 
+      const user: any = await Users.findOne({
         where: { email, is_active: true },
         attributes: ['id', 'email', 'password', 'is_email_verified', 'username'] // Only fetch necessary fields
       });
@@ -38,44 +38,44 @@ class AuthService {
       if (!user.password) {
         return Handler.Error(RES_STATUS.E2, STATUS_CODE.EC401, "Account not properly set up. Please reset your password!");
       }
-      
+
       // Compare password using bcrypt
       const isPasswordValid = await CommonUtils.comparePassword(password, user.password);
-      
+
       if (!isPasswordValid) {
         return Handler.Error(RES_STATUS.E2, STATUS_CODE.EC401, "The Password You Entered Is Incorrect!");
       }
 
       // Generate verification random string
       const vr = CommonUtils.generateRandomString();
-      
+
       // Generate JWT token
-      const token = await Handler.generateToken({ 
-        id: user.id, 
-        email: user.email, 
-        username: user.username, 
-        vr 
+      const token = await Handler.generateToken({
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        vr
       }, '5d');
 
       // Update user with login token and vr
       await Users.update({ login_token: token, vr }, { where: { id: user.id } });
 
       // Create login history record
-      await Login_History.create({ 
-        user_id: user.id, 
-        email: user.email, 
-        login_token: token, 
+      await Login_History.create({
+        user_id: user.id,
+        email: user.email,
+        login_token: token,
         vr: vr
       } as any);
 
-      return Handler.Success(RES_STATUS.E1, STATUS_CODE.EC200, "Login Successfully!", { 
-        jwt: token, 
-        vr, 
-        user: { 
-          id: user.id, 
+      return Handler.Success(RES_STATUS.E1, STATUS_CODE.EC200, "Login Successfully!", {
+        jwt: token,
+        vr,
+        user: {
+          id: user.id,
           email: user.email,
-          username: user.username 
-        } 
+          username: user.username
+        }
       });
 
     } catch (error: any) {
@@ -96,10 +96,10 @@ class AuthService {
       }
 
       // Create logout history record
-      await Login_History.create({ 
-        user_id: user.id, 
-        email: user.email, 
-        login_token: token, 
+      await Login_History.create({
+        user_id: user.id,
+        email: user.email,
+        login_token: token,
         vr: user.vr || undefined
       } as any);
 
@@ -138,15 +138,15 @@ class AuthService {
       });
 
       const user = userInfoRes.data;
-      return { 
-        status: true, 
-        message: "Data Fetch Successfully!", 
-        data: { 
-          email: user.email, 
-          name: user.name, 
-          picture: user.picture, 
-          sub: user.id 
-        } 
+      return {
+        status: true,
+        message: "Data Fetch Successfully!",
+        data: {
+          email: user.email,
+          name: user.name,
+          picture: user.picture,
+          sub: user.id
+        }
       };
 
     } catch (error: any) {
@@ -155,11 +155,47 @@ class AuthService {
     }
   };
 
+  async validateGoogleTokenApp(idToken: string) {
+    try {
+      const ticket = await client.verifyIdToken({
+        idToken,
+        audience: process.env.GOOGLE_CLIENT_ID, // MUST be Web Client ID
+      });
+
+      const payload = ticket.getPayload();
+
+      if (!payload) {
+        return {
+          status: false,
+          message: 'Invalid Google ID token',
+        };
+      }
+
+      return {
+        status: true,
+        data: {
+          email: payload.email,
+          name: payload.name,
+          sub: payload.sub,
+          email_verified: payload.email_verified,
+        },
+      };
+    } catch (error) {
+      console.error('Google ID token validation failed:', error);
+      return {
+        status: false,
+        message: 'Invalid or expired Google ID token',
+      };
+    }
+  };
+
   async ssoLoginService(req: any) {
     try {
-      const { token } = req.body;
-      
-      const { data, status, message } = await this.validateGoogleToken(token);
+      const { token, platform = 'web' } = req.body;
+
+      console.log(token, 'sso token')
+
+      const { data, status, message } = platform === 'app' ? await this.validateGoogleTokenApp(token) : await this.validateGoogleToken(token);
 
       if (!status) {
         return Handler.Error(RES_STATUS.E2, STATUS_CODE.EC400, message);
@@ -173,14 +209,14 @@ class AuthService {
         if (!user) {
           // Hash a default password for SSO users
           const defaultPassword = await CommonUtils.hashPassword(CommonUtils.generateRandomString(12));
-          
+
           const newUser = await Users.create({
             username: name,
             email,
             password: defaultPassword,
             is_email_verified: true
           } as any);
-          
+
           user = newUser;
         }
 
@@ -193,36 +229,36 @@ class AuthService {
         }
 
         const vr = CommonUtils.generateRandomString();
-        const jwtToken = await Handler.generateToken({ 
-          id: user.id, 
-          email: user.email, 
-          username: user.username, 
-          vr 
+        const jwtToken = await Handler.generateToken({
+          id: user.id,
+          email: user.email,
+          username: user.username,
+          vr
         }, '24h');
 
         await Users.update({ login_token: jwtToken, vr }, { where: { id: user.id } });
 
-        const history_data = { 
-          user_id: user.id, 
-          email: user.email, 
-          login_token: jwtToken, 
-          vr 
-        };
-        await Login_History.create({ 
+        const history_data = {
           user_id: user.id,
-          email: user.email, 
-          login_token: jwtToken, 
+          email: user.email,
+          login_token: jwtToken,
+          vr
+        };
+        await Login_History.create({
+          user_id: user.id,
+          email: user.email,
+          login_token: jwtToken,
           vr: vr
         } as any);
 
-        return Handler.Success(RES_STATUS.E1, STATUS_CODE.EC200, "Login Successfully!", { 
-          jwt: jwtToken, 
-          vr, 
-          user: { 
+        return Handler.Success(RES_STATUS.E1, STATUS_CODE.EC200, "Login Successfully!", {
+          jwt: jwtToken,
+          vr,
+          user: {
             id: user.id,
             email: user.email,
             username: user.username
-          } 
+          }
         });
       } else {
         return Handler.Error(RES_STATUS.E2, STATUS_CODE.EC400, "Invalid Token!");

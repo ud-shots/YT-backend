@@ -30,6 +30,7 @@ const mediaProccess = async (pending_upload_media_id: string) => {
         }
 
         let file_path = null;
+        let file_name = null;
         await Handler.addLogs(user_id, pending_upload_media_id, 'Media status updated to pending', 'Cron Job')
         await Pending_Uplaod_Media.update({ status: 'pending' }, { where: { id: pending_upload_media_id } });
 
@@ -51,6 +52,7 @@ const mediaProccess = async (pending_upload_media_id: string) => {
             }
 
             file_path = `${process.cwd()}/public/uploads/media/${convert_url_to_file.data.file_name}`
+            file_name = convert_url_to_file.data.file_name
 
             if (!file_path) {
                 await Pending_Uplaod_Media.update({ status: 'failed' }, { where: { id: pending_upload_media_id } });
@@ -60,6 +62,7 @@ const mediaProccess = async (pending_upload_media_id: string) => {
 
         } else {
             file_path = `${process.cwd()}/public/uploads/media/${find_media.file_name}`
+            file_name = find_media.file_name
 
             if (!fs.existsSync(file_path)) {
                 await Pending_Uplaod_Media.update({ status: 'failed' }, { where: { id: pending_upload_media_id } });
@@ -109,17 +112,17 @@ const mediaProccess = async (pending_upload_media_id: string) => {
         }
 
         if (find_insta_facebook_credential) {
-            // const instagram = uploadOnInstagram(pending_upload_media_id, find_insta_facebook_credential?.insta_business_account_id || '', find_insta_facebook_credential?.page_access_token || '', file_path, seo.title, media_type)
-            // console.log('instagram---------->', instagram);
-            const facebook = uploadOnFacebook(pending_upload_media_id, find_insta_facebook_credential?.page_id || '', find_insta_facebook_credential?.page_access_token || '', file_path, seo.title, media_type)
-            console.log('facebook---------->', facebook);
+            const instagram = uploadOnInstagram(pending_upload_media_id, find_insta_facebook_credential?.insta_business_account_id || '', find_insta_facebook_credential?.page_access_token || '', `${process.env.FILE_URL}${file_name}`, seo.title, media_type)
+            console.log('instagram---------->', instagram);
+            // const facebook = uploadOnFacebook(pending_upload_media_id, find_insta_facebook_credential?.page_id || '', find_insta_facebook_credential?.page_access_token || '', file_path, seo.title, media_type)
+            // console.log('facebook---------->', facebook);
         }
 
         if (find_youtube_credential) {
-            let obj: any = { user_id: user_id, filename: file_path, original_url: find_media.url || null, local_path: file_path, visibility: find_media.visibility || 'private', status: 'uploading', scheduled_at: find_media.schedule_date ? new Date(find_media.schedule_date) : undefined };
-            const video: any = await Videos.create(obj);
-            const youtube = uploadOnYoutube(pending_upload_media_id, user_id, file_path, seo, find_media.visibility, find_media.schedule_date, video?.id, find_youtube_credential)
-            console.log('youtube---------->', youtube);
+            // let obj: any = { user_id: user_id, filename: file_path, original_url: find_media.url || null, local_path: file_path, visibility: find_media.visibility || 'private', status: 'uploading', scheduled_at: find_media.schedule_date ? new Date(find_media.schedule_date) : undefined };
+            // const video: any = await Videos.create(obj);
+            // const youtube = uploadOnYoutube(pending_upload_media_id, user_id, file_path, seo, find_media.visibility, find_media.schedule_date, video?.id)
+            // console.log('youtube---------->', youtube);
         }
 
         await Pending_Uplaod_Media.update({ status: 'success' }, { where: { id: pending_upload_media_id } });

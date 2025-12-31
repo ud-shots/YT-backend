@@ -26,6 +26,8 @@ const waitingForInstaStatus = async (creationId: string, accessToken: string, ma
 
             if (res.data.status_code === "FINISHED" || res.data.status_code === "PUBLISHED") {
                 return { status: true, message: "Instagram processing completed" }
+            }else if(res.data.status_code != "IN_PROGRESS"){
+                return { status: false, message: "Instagram processing failed" }
             }
 
             // wait 5 seconds before next check

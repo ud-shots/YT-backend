@@ -8,6 +8,7 @@ import authRoute from './src/app/auth/router'
 import youtubeRoute from './src/app/youtube/router'
 import dashboardRoute from './src/app/dashboard/router'
 import facebookRoute from './src/app/facebook/router'
+import fileRoute from './src/app/file/router'
 import bodyParser from 'body-parser'
 import { Logs } from './src/models/logs'
 import { globalErrorHandler } from './src/middleware/logging'
@@ -29,7 +30,7 @@ app.get('/', (req, res) => {
 
 db.sync({
   alter: true, // Set to true to automatically create/update tables
-  logging: process.env.SERVER_MODE === "LIVE" ? false : console.log
+  logging: false
 }).then((result: any) => {
   console.log('Database Connected Successfully!')
 }).catch((err: any) => {
@@ -40,6 +41,7 @@ app.use('/api/auth', authRoute)
 app.use('/api/youtube', youtubeRoute)
 app.use('/api/dashboard', dashboardRoute)
 app.use('/api/facebook', facebookRoute)
+app.use('/api/file', fileRoute)
 
 // Register global error handler
 app.use(globalErrorHandler);

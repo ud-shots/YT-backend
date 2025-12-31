@@ -14,7 +14,7 @@ export class FacebookCredential extends Model<FacebookCredential> {
   @BelongsTo(() => Users)
   user!: Users;
 
-  @Column({ type: DataType.STRING, allowNull: true })
+  @Column({ type: DataType.TEXT, allowNull: true })
   access_token?: string;
 
   @Column({ type: DataType.STRING, allowNull: true })
@@ -23,7 +23,7 @@ export class FacebookCredential extends Model<FacebookCredential> {
   @Column({ type: DataType.STRING, allowNull: true })
   page_name?: string;
 
-  @Column({ type: DataType.STRING, allowNull: true })
+  @Column({ type: DataType.TEXT, allowNull: true })
   page_access_token?: string;
 
   @Column({ type: DataType.STRING, allowNull: true })

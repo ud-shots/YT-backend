@@ -8,7 +8,7 @@ export class YouTubeCredential extends Model<YouTubeCredential> {
   id: string | undefined;
 
   @ForeignKey(() => Users)
-  @Column({ type: DataType.UUID, allowNull: false, unique: true })
+  @Column({ type: DataType.UUID, allowNull: false })
   user_id: string | undefined;
 
   @BelongsTo(() => Users)
@@ -20,10 +20,10 @@ export class YouTubeCredential extends Model<YouTubeCredential> {
   @Column({ type: DataType.STRING, allowNull: true })
   channel_title?: string;
 
-  @Column({ type: DataType.STRING, allowNull: true })
+  @Column({ type: DataType.TEXT, allowNull: true })
   access_token?: string;
 
-  @Column({ type: DataType.STRING, allowNull: true })
+  @Column({ type: DataType.TEXT, allowNull: true })
   refresh_token?: string;
 
   @Column({ type: DataType.STRING, allowNull: true })

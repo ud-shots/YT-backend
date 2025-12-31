@@ -7,6 +7,7 @@ import Logger from "../../common/logger";
 import { Videos } from "../../models/videos";
 import { YouTubeCredential } from "../../models/youtube_credential";
 import Handler from "../../common/handler";
+import { Pending_Uplaod_Media } from "../../models/pending_upload_media";
 
 const uploadOnYoutube = async (pending_upload_media_id: string, user_id: string, filePath: string, seo: any, publishType: "public" | "private" | "scheduled", publishAt: string | null, video_id: string) => {
 
@@ -107,6 +108,8 @@ ${seo.suggestedHashtags?.join(" ")}
 
         console.log(youtubeVideoId, 'youtubeVideoId')
     }
+
+    await Pending_Uplaod_Media.update({ status: 'success' }, { where: { id: pending_upload_media_id } });
 
     return true;
 }

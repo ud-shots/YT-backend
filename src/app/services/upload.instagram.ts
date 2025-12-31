@@ -22,7 +22,7 @@ const waitingForInstaStatus = async (creationId: string, accessToken: string, ma
                 }
             );
 
-            console.log(res, 'data.status_code')
+            console.log(res?.data, 'data.status_code')
 
             if (res.data.status_code === "FINISHED" || res.data.status_code === "PUBLISHED") {
                 return { status: true, message: "Instagram processing completed" }

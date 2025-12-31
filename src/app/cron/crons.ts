@@ -103,7 +103,7 @@ cron.schedule('* * * * *', async () => {
 cron.schedule('*/15 * * * * *', async () => {
     console.log('Cron job running every 15 second');
     try {
-        isWithinSchedule()
+        // isWithinSchedule()
         const response = await fetch('https://yt-backend-rvma.onrender.com/');
 
         if (!response.ok) {

@@ -19,6 +19,7 @@ const schedule: Record<string, { start_time: string; end_time: string }[]> = {
         { start_time: '19:00', end_time: '23:59' }
     ],
     thursday: [
+        { start_time: '00:01', end_time: '15:00' },
         { start_time: '12:00', end_time: '15:00' },
         { start_time: '18:00', end_time: '21:00' }
     ],

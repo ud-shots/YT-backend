@@ -1,7 +1,7 @@
 import cron from 'node-cron';
 import { Pending_Uplaod_Media } from '../../models/pending_upload_media';
 import mediaProccess from './media_proccess';
-import moment from 'moment'
+import moment from 'moment-timezone'
 /**
  * Upload schedule (24-hour format)
  */
@@ -40,18 +40,29 @@ const schedule: Record<string, { start_time: string; end_time: string }[]> = {
  * Helper: Check if current time is inside allowed window
  */
 function isWithinSchedule(): boolean {
-    const now = moment();
+    // Force India timezone
+    const now = moment.tz('Asia/Kolkata');
 
-    const day = now.format('dddd').toLowerCase(); // monday, tuesday, etc.
+    const day = now.format('dddd').toLowerCase();
     const daySchedule = schedule[day];
 
     if (!daySchedule) return false;
 
     return daySchedule.some(({ start_time, end_time }) => {
-        const start = moment(start_time, 'HH:mm');
-        const end = moment(end_time, 'HH:mm');
+        // Create start & end in the SAME timezone and SAME day
+        const start = moment.tz(
+            `${now.format('YYYY-MM-DD')} ${start_time}`,
+            'YYYY-MM-DD HH:mm',
+            'Asia/Kolkata'
+        );
 
-        // same-day comparison, inclusive
+        const end = moment.tz(
+            `${now.format('YYYY-MM-DD')} ${end_time}`,
+            'YYYY-MM-DD HH:mm',
+            'Asia/Kolkata'
+        );
+
+        // Inclusive comparison
         return now.isBetween(start, end, undefined, '[]');
     });
 }

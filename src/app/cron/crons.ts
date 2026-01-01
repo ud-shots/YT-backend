@@ -7,23 +7,27 @@ import moment from 'moment-timezone'
  */
 const schedule: Record<string, { start_time: string; end_time: string }[]> = {
     monday: [
+        { start_time: '09:00', end_time: '10:15' },
         { start_time: '12:00', end_time: '14:00' },
         { start_time: '19:00', end_time: '21:00' }
     ],
     tuesday: [
+        { start_time: '07:00', end_time: '09:00' },
         { start_time: '12:00', end_time: '15:00' },
         { start_time: '18:00', end_time: '21:00' }
     ],
     wednesday: [
+        { start_time: '09:00', end_time: '09:30' },
         { start_time: '12:00', end_time: '15:00' },
         { start_time: '19:00', end_time: '22:00' }
     ],
     thursday: [
-        { start_time: '00:01', end_time: '15:00' },
+        { start_time: '08:00', end_time: '08:45' },
         { start_time: '12:00', end_time: '15:00' },
         { start_time: '18:00', end_time: '21:00' }
     ],
     friday: [
+        { start_time: '07:00', end_time: '08:00' },
         { start_time: '13:00', end_time: '16:00' },
         { start_time: '17:00', end_time: '20:00' }
     ],

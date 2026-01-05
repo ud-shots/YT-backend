@@ -116,11 +116,11 @@ const mediaProccess = async (pending_upload_media_id: string) => {
         
         if (find_insta_facebook_credential) {
             try {
-                const instagram = await uploadOnInstagram(pending_upload_media_id, find_insta_facebook_credential?.insta_business_account_id || '', find_insta_facebook_credential?.page_access_token || '', `${process.env.FILE_URL}${file_name}`, seo.title, media_type)
+                const instagram =  uploadOnInstagram(pending_upload_media_id, find_insta_facebook_credential?.insta_business_account_id || '', find_insta_facebook_credential?.page_access_token || '', `${process.env.FILE_URL}${file_name}`, seo.title, media_type)
                 console.log('instagram---------->', instagram);
                 uploadSuccess = uploadSuccess || !!instagram;
                 
-                const facebook = await uploadOnFacebook(pending_upload_media_id, find_insta_facebook_credential?.page_id || '', find_insta_facebook_credential?.page_access_token || '', file_path, seo.title, media_type)
+                const facebook =  uploadOnFacebook(pending_upload_media_id, find_insta_facebook_credential?.page_id || '', find_insta_facebook_credential?.page_access_token || '', file_path, seo.title, media_type)
                 console.log('facebook---------->', facebook);
                 uploadSuccess = uploadSuccess || !!facebook;
             } catch (error) {

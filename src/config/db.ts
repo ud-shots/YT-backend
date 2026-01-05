@@ -8,6 +8,7 @@ import { YouTubeCredential } from '../models/youtube_credential';
 import { FacebookCredential } from '../models/facebook_credential';
 import { Logs } from '../models/logs';
 import { Pending_Uplaod_Media } from '../models/pending_upload_media';
+import { UploadSchedule } from '../models/upload_schedule';
 
 let mode = process.env.SERVER_MODE || 'LOCAL'
 
@@ -30,5 +31,5 @@ export const db: Sequelize = new Sequelize(dbName, dbUser, dbPassword, {
       }
     }
   } : {}),
-  models: [Users, Login_History, Videos, YouTubeCredential, FacebookCredential, Logs, Pending_Uplaod_Media]
+  models: [Users, Login_History, Videos, YouTubeCredential, FacebookCredential, Logs, Pending_Uplaod_Media, UploadSchedule]
 });

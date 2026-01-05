@@ -111,26 +111,55 @@ const mediaProccess = async (pending_upload_media_id: string) => {
             await Handler.addLogs(user_id, pending_upload_media_id, `YouTube credential not found`, find_media.platform)
         }
 
+        // Process uploads for different platforms
+        let uploadSuccess = false;
+        
         if (find_insta_facebook_credential) {
-            const instagram = uploadOnInstagram(pending_upload_media_id, find_insta_facebook_credential?.insta_business_account_id || '', find_insta_facebook_credential?.page_access_token || '', `${process.env.FILE_URL}${file_name}`, seo.title, media_type)
-            console.log('instagram---------->', instagram);
-            const facebook = uploadOnFacebook(pending_upload_media_id, find_insta_facebook_credential?.page_id || '', find_insta_facebook_credential?.page_access_token || '', file_path, seo.title, media_type)
-            console.log('facebook---------->', facebook);
+            try {
+                const instagram = await uploadOnInstagram(pending_upload_media_id, find_insta_facebook_credential?.insta_business_account_id || '', find_insta_facebook_credential?.page_access_token || '', `${process.env.FILE_URL}${file_name}`, seo.title, media_type)
+                console.log('instagram---------->', instagram);
+                uploadSuccess = uploadSuccess || !!instagram;
+                
+                const facebook = await uploadOnFacebook(pending_upload_media_id, find_insta_facebook_credential?.page_id || '', find_insta_facebook_credential?.page_access_token || '', file_path, seo.title, media_type)
+                console.log('facebook---------->', facebook);
+                uploadSuccess = uploadSuccess || !!facebook;
+            } catch (error) {
+                console.error('Error uploading to Instagram/Facebook:', error);
+            }
         }
 
         if (find_youtube_credential) {
-            let obj: any = { user_id: user_id, filename: file_path, original_url: find_media.url || null, local_path: file_path, visibility: find_media.visibility || 'private', status: 'uploading', scheduled_at: find_media.schedule_date ? new Date(find_media.schedule_date) : undefined };
-            const video: any = await Videos.create(obj);
-            const youtube = uploadOnYoutube(pending_upload_media_id, user_id, file_path, seo, find_media.visibility, find_media.schedule_date, video?.id)
-            console.log('youtube---------->', youtube);
+            try {
+                let obj: any = { user_id: user_id, filename: file_path, original_url: find_media.url || null, local_path: file_path, visibility: find_media.visibility || 'private', status: 'uploading', scheduled_at: find_media.schedule_date ? new Date(find_media.schedule_date) : undefined };
+                const video: any = await Videos.create(obj);
+                const youtube = await uploadOnYoutube(pending_upload_media_id, user_id, file_path, seo, find_media.visibility, find_media.schedule_date, video?.id)
+                console.log('youtube---------->', youtube);
+                uploadSuccess = uploadSuccess || !!youtube;
+            } catch (error) {
+                console.error('Error uploading to YouTube:', error);
+            }
         }
 
-        // await Pending_Uplaod_Media.update({ status: 'success' }, { where: { id: pending_upload_media_id } });
-        return true
+        // Update final status based on upload results
+        if (uploadSuccess) {
+            await Pending_Uplaod_Media.update({ status: 'success' }, { where: { id: pending_upload_media_id } });
+            console.log(`✅ Successfully processed media ID: ${pending_upload_media_id}`);
+        } else {
+            await Pending_Uplaod_Media.update({ status: 'failed' }, { where: { id: pending_upload_media_id } });
+            console.log(`❌ Failed to process media ID: ${pending_upload_media_id}`);
+        }
+
+        return uploadSuccess;
 
     } catch (error: any) {
-        await Pending_Uplaod_Media.update({ status: 'failed' }, { where: { id: pending_upload_media_id } });
+        try {
+            // Ensure the status is updated to failed even if there's an error
+            await Pending_Uplaod_Media.update({ status: 'failed' }, { where: { id: pending_upload_media_id } });
+        } catch (updateError) {
+            console.error('Error updating status to failed:', updateError);
+        }
         console.log('Error From Media Proccess :- ', error.message);
+        return false;
     }
 }
 

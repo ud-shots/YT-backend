@@ -1,5 +1,6 @@
-import { Table, Column, Model, DataType, ForeignKey } from 'sequelize-typescript';
+import { Table, Column, Model, DataType, ForeignKey, BelongsTo } from 'sequelize-typescript';
 import { Users } from './users';
+import { UploadSchedule } from './upload_schedule';
 
 @Table({ tableName: 'pending_upload_media', timestamps: true })
 export class Pending_Uplaod_Media extends Model<Pending_Uplaod_Media> {
@@ -46,5 +47,8 @@ export class Pending_Uplaod_Media extends Model<Pending_Uplaod_Media> {
 
   @Column({ type: DataType.BOOLEAN, allowNull: false, defaultValue: false })
   uploaded_youtube?: boolean;
+
+  @BelongsTo(() => UploadSchedule, { foreignKey: 'upload_schedule_id', as: 'schedule' })
+  upload_schedule?: UploadSchedule;
 
 }

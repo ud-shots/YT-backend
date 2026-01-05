@@ -8,7 +8,7 @@ import moment from 'moment-timezone'
 const schedule: Record<string, { start_time: string; end_time: string }[]> = {
     monday: [
         { start_time: '09:00', end_time: '10:15' },
-        { start_time: '12:00', end_time: '14:00' },
+        { start_time: '11:30', end_time: '14:00' },
         { start_time: '19:00', end_time: '21:00' }
     ],
     tuesday: [
